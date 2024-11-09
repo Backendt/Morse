@@ -7,8 +7,14 @@ pub struct User {
 }
 
 #[derive(Serialize)]
-pub struct TokenRequest {
-    pub token: String,
+pub struct JwtResponse {
+    pub token: String
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct JwtClaims {
+    pub exp: usize, // Expiration timestamp
+    pub sub: String // Subject (username)
 }
 
 #[derive(Serialize)]

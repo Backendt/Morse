@@ -14,6 +14,8 @@ use argon2::{
         PasswordHash, PasswordHasher, PasswordVerifier, SaltString
     }
 };
+use chrono::Utc;
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
 use crate::models::*;
 use crate::repositories::user_repository;
@@ -36,13 +38,21 @@ pub async fn login(user_request: User) -> WebResult<impl Reply> {
     );
 
     // Create JWT if successful
-    if is_password_valid {
-        let token = create_token(&user);
-        let body = json(&token);
-        return Ok(with_status(body, StatusCode::OK));
+    if !is_password_valid {
+        return Ok(refuse_response.as_reply());
     }
 
-    Ok(refuse_response.as_reply())
+    create_jwt(&user).map_or_else(
+        |err| { // TODO Return Err instead
+            eprintln!("Could not create jwt for user. {:?}", err);
+            let response = APIMessage::new("An unexpected error occured. Try again later.", StatusCode::INTERNAL_SERVER_ERROR);
+            Ok(response.as_reply())
+        },
+        |token| {
+            let response = JwtResponse { token };
+            Ok(with_status(json(&response), StatusCode::OK))
+        }
+    )
 }
 
 pub async fn register(user_request: User) -> WebResult<impl Reply> {
@@ -66,10 +76,33 @@ pub async fn register(user_request: User) -> WebResult<impl Reply> {
     Ok(response.as_reply())
 }
 
+// JWT
 
-fn create_token(user: &User) -> TokenRequest {
-    let token = format!("this is jwt for {}", user.username);
-    TokenRequest { token }
+fn create_jwt(user: &User) -> Result<String, jsonwebtoken::errors::Error> {
+    let expiration = Utc::now()
+        .checked_add_signed(chrono::Duration::hours(10))
+        .expect("Could not add 10 hours to current time")
+        .timestamp();
+
+    let claims = JwtClaims {
+        exp: expiration as usize,
+        sub: user.username.to_owned()
+    };
+
+    let header = Header::new(Algorithm::HS512);
+    let secret = std::env::var("JWT_SECRET").expect("The JWT_SECRET environment variable is not set.");
+    
+    encode(&header, &claims, &EncodingKey::from_secret(secret.as_bytes()))
+}
+
+pub fn get_jwt_username(token: &str) -> Option<String> {
+    let secret = std::env::var("JWT_SECRET").expect("The JWT_SECRET environment variable is not set.");
+    let decoded_jwt = decode::<JwtClaims>(&token, &DecodingKey::from_secret(secret.as_bytes()), &Validation::new(Algorithm::HS512));
+
+    match decoded_jwt {
+        Ok(jwt) => Some(jwt.claims.sub),
+        _ => None
+    }
 }
 
 // Hashing
