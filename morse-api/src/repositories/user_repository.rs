@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use crate::models::User;
+use crate::models::auth::User;
 
 pub async fn get_user(username: &str) -> Result<User, Infallible> {
     // TODO Test implementation

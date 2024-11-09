@@ -7,7 +7,10 @@ use warp::{
     }
 };
 
-use crate::models::{User, APIMessage, JwtResponse};
+use crate::models::{
+    auth::{User, JwtResponse},
+    APIMessage
+};
 use crate::services::{user_service, jwt_service};
 
 const BEARER: &str = "Bearer ";

@@ -7,7 +7,7 @@ use argon2::{
     }
 };
 
-use crate::models::User;
+use crate::models::auth::User;
 use crate::repositories::user_repository;
 
 pub async fn validate_login(user_request: &User) -> Result<bool, Box<dyn std::error::Error>> {

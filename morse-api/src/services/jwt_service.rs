@@ -1,8 +1,7 @@
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
-use crate::models::{JwtClaims, User};
-
+use crate::models::auth::{JwtClaims, User};
 
 pub fn create_jwt(user: &User) -> Result<String, jsonwebtoken::errors::Error> {
     let expiration = Utc::now()
