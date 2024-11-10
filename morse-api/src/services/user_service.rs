@@ -7,27 +7,40 @@ use argon2::{
     }
 };
 
-use crate::models::auth::User;
-use crate::repositories::user_repository;
+use crate::{
+    models::{
+        auth::User,
+        errors::{InternalError, InvalidRequest}
+    },
+    repositories::user_repository
+};
 
-pub async fn validate_login(user_request: &User) -> Result<bool, Box<dyn std::error::Error>> {
-    let Ok(user) = user_repository::get_user(&user_request.username).await else { // TODO Handle database connection error
-        let _ = hash(&user_request.username); // Required to avoid timing attack
-        return Ok(false);
-    };
-    
-    compare_to_hash(&user_request.password, &user.password).or_else(
-        |err| {
-            eprintln!("User has an invalid hash stored as password. {:?}", err);
-            Ok(false)
+pub async fn validate_login(user_request: &User) -> Result<bool, warp::reject::Rejection> {
+    match user_repository::get_user(&user_request.username).await {
+        Ok(user) => {
+            compare_to_hash(&user_request.password, &user.password).map_err(|err|
+                InternalError::new(
+                    format!("User has an invalid hash stored as password. {err:?}")
+                    .as_str()
+                )
+            )
+        },
+        Err(err) => {
+            if let Some(_user_not_found) = err.find::<InvalidRequest>() {
+                let _ = hash(&user_request.username); // Required to avoid timing attack
+                return Ok(false);
+            }
+            Err(err)
         }
-    )
+    }
 }
 
-pub async fn register_user(user_request: &User) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn register_user(user_request: &User) -> Result<(), warp::reject::Rejection> {
     let user_exists = user_repository::exists(&user_request.username).await?;
 
-    let hashed_password = hash(&user_request.password).expect("TODO Return error that will be translated to bad request"); // TODO
+    let Ok(hashed_password) = hash(&user_request.password) else {
+        return Err(InvalidRequest::new("Could not hash the given password"));
+    };
 
     let hashed_user = User {
         username: user_request.username.clone(),
@@ -35,7 +48,15 @@ pub async fn register_user(user_request: &User) -> Result<(), Box<dyn std::error
     };
 
     if !user_exists {
-        let _ = user_repository::create_user(&hashed_user).await; // TODO don't block current thread
+        let created_user = user_repository::create_user(&hashed_user).await; // TODO don't block current thread
+        if let Err(err) = created_user {
+            return Err(
+                InternalError::new(
+                    format!("Could not save user. {err:?}")
+                    .as_str()
+                )
+            );
+        }
     }
 
     Ok(())

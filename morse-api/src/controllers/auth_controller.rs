@@ -7,11 +7,14 @@ use warp::{
     }
 };
 
-use crate::models::{
-    auth::{User, JwtResponse},
-    APIMessage
+use crate::{
+    models::{
+        auth::{User, JwtResponse},
+        APIMessage,
+        errors::{InvalidRequest, UnauthorizedUser, InternalError}
+    },
+    services::{user_service, jwt_service}
 };
-use crate::services::{user_service, jwt_service};
 
 const BEARER: &str = "Bearer ";
 
@@ -19,17 +22,9 @@ const BEARER: &str = "Bearer ";
 type WebResult<T> = Result<T, warp::Rejection>;
 
 pub async fn login(user_request: User) -> WebResult<impl Reply> {
-    let is_valid = match user_service::validate_login(&user_request).await {
-        Ok(valid) => valid,
-        Err(err) => {
-            eprintln!("Could not validate login {:?}", err);
-            false
-        }
-    };
-
+    let is_valid = user_service::validate_login(&user_request).await?;
     if !is_valid {
-        let deny_response = APIMessage::new("Invalid credentials", StatusCode::UNAUTHORIZED);
-        return Ok(deny_response.as_reply());
+        return Err(InvalidRequest::new("Invalid credentials"));
     }
 
     match jwt_service::create_jwt(&user_request) {
@@ -37,21 +32,19 @@ pub async fn login(user_request: User) -> WebResult<impl Reply> {
             let response = JwtResponse { token };
             Ok(with_status(json(&response), StatusCode::OK))
         },
-        Err(err) => { // TODO Return Err instead
-            eprintln!("Could not create jwt for user. {:?}", err);
-            let response = APIMessage::new("An unexpected error occured. Try again later.", StatusCode::INTERNAL_SERVER_ERROR);
-            Ok(response.as_reply())
-        }
+        Err(err) => Err(
+            InternalError::new(
+                format!("Could not create jwt for user. {err:?}")
+                .as_str()
+            )
+        )
     }
 }
 
 pub async fn register(user_request: User) -> WebResult<impl Reply> {
-    let register_result = user_service::register_user(&user_request).await;
-
-    match register_result {
-        Err(_err) => Ok(APIMessage::new("An unexpected error occured. Try again later.", StatusCode::INTERNAL_SERVER_ERROR).as_reply()), //Err(warp::reject::custom(err)),
-        Ok(()) => Ok(APIMessage::new("User was created if it didn't already exist", StatusCode::CREATED).as_reply())
-    }
+    user_service::register_user(&user_request).await?;
+    let response = APIMessage::new("User was created if it didn't already exist", StatusCode::CREATED);
+    Ok(response.as_reply())
 }
 
 pub async fn get_current_username(auth_header: String) -> WebResult<String> {
@@ -61,6 +54,5 @@ pub async fn get_current_username(auth_header: String) -> WebResult<String> {
             return Ok(username);
         }
     }
-
-    Err(warp::reject()) // Reject with Unauthorized status instead
+    Err(UnauthorizedUser::new())
 }

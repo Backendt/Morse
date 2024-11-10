@@ -40,7 +40,7 @@ fn get_jwt_secret() -> String {
 
 fn get_jwt_expiration_delay() -> i64 {
     std::env::var("JWT_EXP_HOURS").map_or_else(
-        |_err| 10,
+        |_err| 10, // Default to 10 hours
         |hours| hours.parse().expect("The JWT_EXP_HOURS environment variable should be a i64 number")
     )
 }
