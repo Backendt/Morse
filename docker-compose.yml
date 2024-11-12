@@ -27,8 +27,6 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      - PORT=8080
-      - HOST=0.0.0.0
       - MYSQL_HOST=morse-mysql
       - MYSQL_DATABASE=morse
       - JWT_SECRET
