@@ -1,0 +1,40 @@
+services:
+
+  mysql:
+    container_name: morse-mysql
+    build: ./morse-mysql/
+    restart: always
+    environment:
+      - MYSQL_DATABASE=morse
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 4s
+      retries: 20
+      start_period: 30s
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  rust-api:
+    container_name: morse-api
+    build: ./morse-api/
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      - MYSQL_HOST=morse-mysql
+      - MYSQL_DATABASE=morse
+      - JWT_SECRET
+      - JWT_EXP_HOURS
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+
+volumes:
+  mysql-data: {}
