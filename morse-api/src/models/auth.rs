@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
+use sqlx::FromRow;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, FromRow)]
 pub struct User {
     pub username: String, // TODO Validation?
     pub password: String,

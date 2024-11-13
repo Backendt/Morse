@@ -8,15 +8,20 @@ use warp::{
     Reply,
     reject::Rejection
 };
-use std::error::Error;
+use std::{
+    error::Error,
+    convert::Infallible
+};
+use sqlx::MySqlPool;
+
 use super::{
     controllers::*,
     models::{APIMessage, errors::*}
 };
 
-pub fn get_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    login()
-        .or(register())
+pub fn get_routes(database: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    login(&database)
+        .or(register(&database))
         .or(me())
         .recover(handle_rejection)
 }
@@ -28,17 +33,19 @@ fn me() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         .and(authenticated())
 }
 
-fn login() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("login")
         .and(warp::post())
         .and(warp::body::json()) // TODO Set a size limit with a custom json filter
+        .and(with_db(database.clone()))
         .and_then(auth_controller::login)
 }
 
-fn register() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn register(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("register")
         .and(warp::post())
         .and(warp::body::json())
+        .and(with_db(database.clone()))
         .and_then(auth_controller::register)
 }
 
@@ -48,6 +55,12 @@ fn authenticated() -> impl Filter<Extract = (String,), Error = Rejection> + Clon
     header::<String>(AUTHORIZATION.as_str())
         .and_then(auth_controller::get_current_username)
 }
+
+fn with_db(database: MySqlPool) -> impl Filter<Extract = (MySqlPool,), Error = Infallible> + Clone {
+    warp::any().map(move || database.clone())
+}
+
+// Error handling
 
 async fn handle_rejection(err: warp::reject::Rejection) -> Result<impl Reply, Rejection> {
     let message: String;

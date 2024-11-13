@@ -16,7 +16,7 @@ async fn main() {
         .unwrap_or_else(|_| String::from("0.0.0.0:8080"))
         .parse().expect("Cannot parse the listening socket. Check your LISTENING_SOCKET environment variable");
 
-    let api_routes = routes::get_routes();
+    let api_routes = routes::get_routes(database);
 
     println!("Running API on {}:{}..", socket.ip(), socket.port());
     warp::serve(api_routes)

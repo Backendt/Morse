@@ -6,6 +6,7 @@ use argon2::{
         PasswordHash, PasswordHasher, PasswordVerifier, SaltString
     }
 };
+use sqlx::MySqlPool;
 
 use crate::{
     models::{
@@ -15,8 +16,8 @@ use crate::{
     repositories::user_repository
 };
 
-pub async fn validate_login(user_request: &User) -> Result<bool, warp::reject::Rejection> {
-    match user_repository::get_user(&user_request.username).await {
+pub async fn validate_login(user_request: &User, database: &MySqlPool) -> Result<bool, warp::reject::Rejection> {
+    match user_repository::get_user(&user_request.username, database).await {
         Ok(user) => {
             compare_to_hash(&user_request.password, &user.password).map_err(|err|
                 InternalError::new(
@@ -35,8 +36,8 @@ pub async fn validate_login(user_request: &User) -> Result<bool, warp::reject::R
     }
 }
 
-pub async fn register_user(user_request: &User) -> Result<(), warp::reject::Rejection> {
-    let user_exists = user_repository::exists(&user_request.username).await?;
+pub async fn register_user(user_request: &User, database: &MySqlPool) -> Result<(), warp::reject::Rejection> {
+    let user_exists = user_repository::exists(&user_request.username, database).await?;
 
     let Ok(hashed_password) = hash(&user_request.password) else {
         return Err(InvalidRequest::new("Could not hash the given password"));
@@ -48,7 +49,7 @@ pub async fn register_user(user_request: &User) -> Result<(), warp::reject::Reje
     };
 
     if !user_exists {
-        let created_user = user_repository::create_user(&hashed_user).await; // TODO don't block current thread
+        let created_user = user_repository::create_user(&hashed_user, database).await; // TODO don't block current thread
         if let Err(err) = created_user {
             return Err(
                 InternalError::new(

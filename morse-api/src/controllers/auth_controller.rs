@@ -6,6 +6,7 @@ use warp::{
         with_status
     }
 };
+use sqlx::MySqlPool;
 
 use crate::{
     models::{
@@ -21,8 +22,8 @@ const BEARER: &str = "Bearer ";
 // Shortcut to boilerplate  TODO Move somewhere else?
 type WebResult<T> = Result<T, warp::Rejection>;
 
-pub async fn login(user_request: User) -> WebResult<impl Reply> {
-    let is_valid = user_service::validate_login(&user_request).await?;
+pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
+    let is_valid = user_service::validate_login(&user_request, &database).await?;
     if !is_valid {
         return Err(InvalidRequest::new("Invalid credentials"));
     }
@@ -41,8 +42,8 @@ pub async fn login(user_request: User) -> WebResult<impl Reply> {
     }
 }
 
-pub async fn register(user_request: User) -> WebResult<impl Reply> {
-    user_service::register_user(&user_request).await?;
+pub async fn register(user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
+    user_service::register_user(&user_request, &database).await?;
     let response = APIMessage::new("User was created if it didn't already exist", StatusCode::CREATED);
     Ok(response.as_reply())
 }
