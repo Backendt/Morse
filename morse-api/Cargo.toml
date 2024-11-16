@@ -13,4 +13,5 @@ serde = { version = "1.0.214", features = ["derive"] }
 sqlx = { version = "0.8.2", features = ["runtime-tokio", "mysql"] }
 idna = "=1.0.2" # Temporary fix for sqlx
 tokio = { version = "1.41.0", features = ["full"] }
-warp = "0.3.7" # TODO Add tls feature
+warp = "0.3.7"
+futures = { version = "0.3.31", default-features = false }
