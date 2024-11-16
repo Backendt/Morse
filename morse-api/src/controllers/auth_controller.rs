@@ -9,6 +9,7 @@ use warp::{
 use sqlx::MySqlPool;
 
 use crate::{
+    controllers::WebResult,
     models::{
         auth::{User, JwtResponse},
         APIMessage,
@@ -18,9 +19,6 @@ use crate::{
 };
 
 const BEARER: &str = "Bearer ";
-
-// Shortcut to boilerplate  TODO Move somewhere else?
-type WebResult<T> = Result<T, warp::Rejection>;
 
 pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
     let is_valid = user_service::validate_login(&user_request, &database).await?;
