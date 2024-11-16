@@ -6,31 +6,41 @@ use warp::{
         StatusCode
     },
     Reply,
-    reject::Rejection
+    reject::Rejection,
+    ws::Ws
 };
 use std::{
     error::Error,
-    convert::Infallible
+    convert::Infallible,
+    sync::Arc
 };
 use sqlx::MySqlPool;
 
 use super::{
     controllers::*,
-    models::{APIMessage, errors::*}
+    models::{
+        APIMessage,
+        ws::UsersSockets,
+        errors::*
+    }
 };
 
-pub fn get_routes(database: MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn get_routes(database: MySqlPool, users: &Arc<UsersSockets>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     login(&database)
         .or(register(&database))
-        .or(me())
+        .or(websocket(&users))
         .recover(handle_rejection)
 }
 
 // Endpoints
 
-fn me() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("me")
+fn websocket(users: &Arc<UsersSockets>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("stream")
         .and(authenticated())
+        .and(warp::ws())
+        .and(with_users(users.clone()))
+        .map(|username: String, request: Ws, users_sockets: Arc<UsersSockets>|
+            request.on_upgrade(|socket| chat_controller::on_client_connect(username, socket, users_sockets)))
 }
 
 fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
@@ -58,6 +68,10 @@ fn authenticated() -> impl Filter<Extract = (String,), Error = Rejection> + Clon
 
 fn with_db(database: MySqlPool) -> impl Filter<Extract = (MySqlPool,), Error = Infallible> + Clone {
     warp::any().map(move || database.clone())
+}
+
+fn with_users(users: Arc<UsersSockets>) -> impl Filter<Extract = (Arc<UsersSockets>,), Error = Infallible> + Clone {
+    warp::any().map(move || users.clone())
 }
 
 // Error handling

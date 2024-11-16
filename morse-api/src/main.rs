@@ -5,7 +5,14 @@ mod models;
 mod repositories;
 mod database;
 
-use std::net::SocketAddr;
+use std::{
+    net::SocketAddr,
+    collections::HashMap,
+    sync::Arc
+};
+use tokio::sync::RwLock;
+
+use crate::models::ws::UsersSockets;
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +23,8 @@ async fn main() {
         .unwrap_or_else(|_| String::from("0.0.0.0:8080"))
         .parse().expect("Cannot parse the listening socket. Check your LISTENING_SOCKET environment variable");
 
-    let api_routes = routes::get_routes(database);
+    let users: Arc<UsersSockets> = Arc::new(RwLock::new(HashMap::new()));
+    let api_routes = routes::get_routes(database, &users);
 
     println!("Running API on {}:{}..", socket.ip(), socket.port());
     warp::serve(api_routes)
