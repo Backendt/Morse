@@ -1026,6 +1026,7 @@ dependencies = [
  "idna 1.0.2",
  "jsonwebtoken",
  "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "warp",

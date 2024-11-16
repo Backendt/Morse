@@ -15,3 +15,4 @@ idna = "=1.0.2" # Temporary fix for sqlx
 tokio = { version = "1.41.0", features = ["full"] }
 warp = "0.3.7"
 futures = { version = "0.3.31", default-features = false }
+serde_json = "1.0.132"
