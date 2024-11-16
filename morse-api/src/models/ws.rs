@@ -8,7 +8,7 @@ use futures::stream::SplitSink;
 use warp::ws::{WebSocket, Message};
 
 pub type WsSink = SplitSink<WebSocket, Message>;
-pub type UsersSockets = RwLock<HashMap<String, mpsc::UnboundedSender<Message>>>;
+pub type UsersChannels = RwLock<HashMap<String, mpsc::UnboundedSender<Message>>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct WsMessage {

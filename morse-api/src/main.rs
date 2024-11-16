@@ -12,7 +12,7 @@ use std::{
 };
 use tokio::sync::RwLock;
 
-use crate::models::ws::UsersSockets;
+use crate::models::ws::UsersChannels;
 
 #[tokio::main]
 async fn main() {
@@ -23,7 +23,7 @@ async fn main() {
         .unwrap_or_else(|_| String::from("0.0.0.0:8080"))
         .parse().expect("Cannot parse the listening socket. Check your LISTENING_SOCKET environment variable");
 
-    let users: Arc<UsersSockets> = Arc::new(RwLock::new(HashMap::new()));
+    let users: Arc<UsersChannels> = Arc::new(RwLock::new(HashMap::new()));
     let api_routes = routes::get_routes(database, &users);
 
     println!("Running API on {}:{}..", socket.ip(), socket.port());

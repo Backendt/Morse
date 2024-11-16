@@ -20,12 +20,12 @@ use super::{
     controllers::*,
     models::{
         APIMessage,
-        ws::UsersSockets,
+        ws::UsersChannels,
         errors::*
     }
 };
 
-pub fn get_routes(database: MySqlPool, users: &Arc<UsersSockets>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn get_routes(database: MySqlPool, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     login(&database)
         .or(register(&database))
         .or(websocket(&users))
@@ -34,12 +34,12 @@ pub fn get_routes(database: MySqlPool, users: &Arc<UsersSockets>) -> impl Filter
 
 // Endpoints
 
-fn websocket(users: &Arc<UsersSockets>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn websocket(users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("stream")
         .and(authenticated())
         .and(warp::ws())
         .and(with_users(users.clone()))
-        .map(|username: String, request: Ws, users_sockets: Arc<UsersSockets>|
+        .map(|username: String, request: Ws, users_sockets: Arc<UsersChannels>|
             request.on_upgrade(|socket| chat_controller::on_client_connect(username, socket, users_sockets)))
 }
 
@@ -70,7 +70,7 @@ fn with_db(database: MySqlPool) -> impl Filter<Extract = (MySqlPool,), Error = I
     warp::any().map(move || database.clone())
 }
 
-fn with_users(users: Arc<UsersSockets>) -> impl Filter<Extract = (Arc<UsersSockets>,), Error = Infallible> + Clone {
+fn with_users(users: Arc<UsersChannels>) -> impl Filter<Extract = (Arc<UsersChannels>,), Error = Infallible> + Clone {
     warp::any().map(move || users.clone())
 }
 

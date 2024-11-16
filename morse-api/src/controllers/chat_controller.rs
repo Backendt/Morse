@@ -9,10 +9,10 @@ use std::sync::Arc;
 
 use crate::{
     services::ws_service,
-    models::ws::UsersSockets
+    models::ws::UsersChannels
 };
 
-pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<UsersSockets>) {
+pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<UsersChannels>) {
     let (sender, mut receiver) = socket.split();
 
     let (user_sender, user_receiver) = add_client(&username, &users).await; 
@@ -31,7 +31,7 @@ pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<U
     remove_client(&username, &users).await;
 }
 
-async fn add_client(username: &String, users: &Arc<UsersSockets>) -> (UnboundedSender<Message>, UnboundedReceiver<Message>) {
+async fn add_client(username: &String, users: &Arc<UsersChannels>) -> (UnboundedSender<Message>, UnboundedReceiver<Message>) {
     // TODO Check if already connected
     println!("[+] '{username}' connected to websocket.");
     let (user_sender, user_receiver) = unbounded_channel();
@@ -39,13 +39,13 @@ async fn add_client(username: &String, users: &Arc<UsersSockets>) -> (UnboundedS
     (user_sender, user_receiver)
 }
 
-async fn remove_client(username: &String, users: &Arc<UsersSockets>) {
+async fn remove_client(username: &String, users: &Arc<UsersChannels>) {
     println!("[-] '{username}' disconnected from websocket.");
     users.write().await.remove(username);
 }
 
 // TODO Impl made for testing
-async fn on_message(username: &String, message: Message, user_sink: UnboundedSender<Message>, users: &Arc<UsersSockets>) {
+async fn on_message(username: &String, message: Message, user_sink: UnboundedSender<Message>, users: &Arc<UsersChannels>) {
     let (target, text) = message.to_str().unwrap().split_once("@").expect("Specify target");
 
     let response = Message::text(
