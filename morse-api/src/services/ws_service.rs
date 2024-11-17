@@ -67,12 +67,6 @@ pub async fn send_message(username: &String, message: WsMessage, user_channel: U
         content: message.content.clone()
     };
 
-    let own_message = WsMessage {
-        action: String::from("receive"),
-        target: String::from(username),
-        content: message.content
-    };
-    
     let _ = target_user.send(response.as_message());
-    let _ = user_channel.send(own_message.as_message());
+    let _ = user_channel.send(response.as_message());
 }
