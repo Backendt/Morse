@@ -4,11 +4,15 @@ use tokio::sync::mpsc::UnboundedSender;
 use std::sync::Arc;
 
 use crate::{
-    services::ws_service,
+    services::{
+        ws_service,
+        chat_service
+    },
     models::ws::{
         UsersChannels,
-        WsMessage,
-        WsStatus,
+        Response,
+        Request,
+        Action,
         Messageable
     }
 };
@@ -17,42 +21,46 @@ pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<U
     let (mut sender, receiver) = socket.split();
     
     match ws_service::add_client(&username, &users).await {
-        Err(error_message) => {
-            let _ = sender.send(error_message.as_message());
-        },
         Ok((user_sender, user_receiver)) => {
             ws_service::start_forwarding(user_receiver, sender).await;
             receive_messages(&username, receiver, user_sender, &users).await;
             ws_service::remove_client(&username, &users).await;
-        }
+        },
+        Err(error_message) => {
+            let response = Response::err(&error_message);
+            let _ = sender.send(response.as_message());
+        },
     };
 }
 
 async fn receive_messages(username: &String, mut receiver: SplitStream<WebSocket>, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>) {
-    while let Some(raw_message) = receiver.next().await {
-        let parsed_message = match raw_message {
-            Ok(message) => ws_service::parse_message(message),
-            Err(_) => {
-                break;
-            }
-        };
+    while let Some(received) = receiver.next().await {
+        let Ok(raw_message) = received else { break; };
 
-        match parsed_message {
-            Ok(message) => on_message(&username, message, user_channel.clone(), &users).await,
+        match ws_service::parse_message(raw_message) {
+            Ok(message) => on_request(&username, message, user_channel.clone(), &users).await,
             Err(error_message) => {
-                let _ = user_channel.send(error_message.as_message());
+                let response = Response::err(&error_message);
+                let _ = user_channel.send(response.as_message());
             }
         };
     }
 }
 
-async fn on_message(username: &String, message: WsMessage, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>) {
-    println!("Received from {username}: {message:?}");
-    match message.action.as_str() {
-        "send_message" => ws_service::send_message(username, message, user_channel, users).await,
-        _ => {
-            let error_message = WsStatus::new("error", "Invalid action").as_message();
-            let _ = user_channel.send(error_message);
-        }
-    }
+async fn on_request(username: &String, request: Request, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>) {
+    println!("Received from {username}: {request:?}");
+    let result = match request.action {
+        //Action::Invite => chat_service::invite_to_chat(username, request, users).await,
+        //Action::Refuse => chat_service::refuse_invitation(username, request, users).await,
+        //Action::Accept => chat_service::accept_invitation(username, request, users).await,
+        Action::Message => chat_service::send_message(username, &request, users).await,
+        _ => Err(String::from("Invalid action"))
+    };
+
+    let response = result.map_or_else(
+        |error_message| Response::err(&error_message),
+        |response_message| Response::success(&response_message)
+    );
+
+    let _ = user_channel.send(response.as_message());
 }
