@@ -16,15 +16,14 @@ use crate::models::ws::UsersChannels;
 
 #[tokio::main]
 async fn main() {
-    let database = database::get_connection().await
-        .expect("Could not connect to database.");
-
     let socket: SocketAddr = std::env::var("LISTENING_SOCKET")
         .unwrap_or_else(|_| String::from("0.0.0.0:8080"))
         .parse().expect("Cannot parse the listening socket. Check your LISTENING_SOCKET environment variable");
 
+    let (mysql, redis) = database::get_connections().await;
+
     let users: Arc<UsersChannels> = Arc::new(RwLock::new(HashMap::new()));
-    let api_routes = routes::get_routes(database, &users);
+    let api_routes = routes::get_routes(redis, mysql, &users);
 
     println!("Running API on {}:{}..", socket.ip(), socket.port());
     warp::serve(api_routes)

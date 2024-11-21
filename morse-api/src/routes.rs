@@ -22,32 +22,34 @@ use super::{
         APIMessage,
         ws::UsersChannels,
         errors::*
-    }
+    },
+    database::RedisCon
 };
 
-pub fn get_routes(database: MySqlPool, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    login(&database)
-        .or(register(&database))
-        .or(websocket(&users))
+pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    login(&mysql)
+        .or(register(&mysql))
+        .or(websocket(&redis, &users))
         .recover(handle_rejection)
 }
 
 // Endpoints
 
-fn websocket(users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+fn websocket(redis: &RedisCon, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("stream")
         .and(authenticated())
         .and(warp::ws())
         .and(with_users(users.clone()))
-        .map(|username: String, request: Ws, users_sockets: Arc<UsersChannels>|
-            request.on_upgrade(|socket| chat_controller::on_client_connect(username, socket, users_sockets)))
+        .and(with_redis(redis.clone()))
+        .map(|username: String, request: Ws, users_sockets: Arc<UsersChannels>, redis: RedisCon|
+            request.on_upgrade(|socket| chat_controller::on_client_connect(username, socket, users_sockets, redis)))
 }
 
 fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("login")
         .and(warp::post())
         .and(warp::body::json()) // TODO Set a size limit with a custom json filter
-        .and(with_db(database.clone()))
+        .and(with_mysql(database.clone()))
         .and_then(auth_controller::login)
 }
 
@@ -55,7 +57,7 @@ fn register(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = R
     warp::path!("register")
         .and(warp::post())
         .and(warp::body::json())
-        .and(with_db(database.clone()))
+        .and(with_mysql(database.clone()))
         .and_then(auth_controller::register)
 }
 
@@ -66,8 +68,12 @@ fn authenticated() -> impl Filter<Extract = (String,), Error = Rejection> + Clon
         .and_then(auth_controller::get_current_username)
 }
 
-fn with_db(database: MySqlPool) -> impl Filter<Extract = (MySqlPool,), Error = Infallible> + Clone {
+fn with_mysql(database: MySqlPool) -> impl Filter<Extract = (MySqlPool,), Error = Infallible> + Clone {
     warp::any().map(move || database.clone())
+}
+
+fn with_redis(redis: RedisCon) -> impl Filter<Extract = (RedisCon,), Error = Infallible> + Clone { 
+    warp::any().map(move || redis.clone())
 }
 
 fn with_users(users: Arc<UsersChannels>) -> impl Filter<Extract = (Arc<UsersChannels>,), Error = Infallible> + Clone {
