@@ -17,6 +17,16 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
 
+  redis:
+    container_name: morse-redis
+    image: redis:alpine
+    restart: always
+    environment:
+      - REDIS_PASSWORD
+    command: /bin/sh -c "redis-server --requirepass $${REDIS_PASSWORD}"
+    volumes:
+      - redis-data:/data
+
   rust-api:
     container_name: morse-api
     build: ./morse-api/
@@ -29,10 +39,13 @@ services:
     environment:
       - MYSQL_HOST=morse-mysql
       - MYSQL_DATABASE=morse
-      - JWT_SECRET
-      - JWT_EXP_HOURS
       - MYSQL_USER
       - MYSQL_PASSWORD
+      - REDIS_HOST=morse-redis
+      - REDIS_PASSWORD
+      - JWT_SECRET
+      - JWT_EXP_HOURS
 
 volumes:
   mysql-data: {}
+  redis-data: {}
