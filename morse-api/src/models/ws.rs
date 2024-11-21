@@ -11,14 +11,13 @@ pub type WsSink = SplitSink<WebSocket, Message>;
 pub type UsersChannels = RwLock<HashMap<String, UnboundedSender<Message>>>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum Action {
+    CreateRoom,
     Invite,
-    Accept,
-    Refuse,
-    Established,
+    Join,
+    Leave,
     Message,
-    Close
 }
 
 #[derive(Debug, Serialize)]
@@ -49,27 +48,28 @@ impl Response {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
     pub action: Action,
-    pub target: String,
+    pub target: String, // TODO Optional for CreateRoom
     pub body: Option<String>
 }
 impl Request {
-    pub fn new(action: Action, target: &String) -> Self {
-        Self {
-            action,
-            target: target.clone(),
-            body: None
-        }
-    }
-
+    // TODO Rename to "new"
     pub fn body(action: Action, target: &String, body: String) -> Self {
         Self {
             action,
             target: target.clone(),
             body: Some(body)
         }
+    }
+
+    pub fn get_body(&self) -> Result<String, String> {
+        self.body.clone()
+            .map(Ok)
+            .unwrap_or_else(|| 
+                Err(String::from("The body is required."))
+            )
     }
 }
 

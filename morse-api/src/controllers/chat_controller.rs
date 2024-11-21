@@ -25,11 +25,12 @@ pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<U
             ws_service::start_forwarding(user_receiver, sender).await;
             receive_messages(&username, receiver, user_sender, &users).await;
             ws_service::remove_client(&username, &users).await;
+            let _ = chat_service::leave_all(&username, &users).await;
         },
         Err(error_message) => {
             let response = Response::err(&error_message);
             let _ = sender.send(response.as_message());
-        },
+        }
     };
 }
 
@@ -49,12 +50,12 @@ async fn receive_messages(username: &String, mut receiver: SplitStream<WebSocket
 
 async fn on_request(username: &String, request: Request, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>) {
     println!("Received from {username}: {request:?}");
-    let result = match request.action {
-        //Action::Invite => chat_service::invite_to_chat(username, request, users).await,
-        //Action::Refuse => chat_service::refuse_invitation(username, request, users).await,
-        //Action::Accept => chat_service::accept_invitation(username, request, users).await,
+    let result: Result<String, String> = match request.action {
+        Action::CreateRoom => chat_service::create_room(username).await,
+        Action::Invite => chat_service::invite_in_room(username, &request, users).await,
+        Action::Join => chat_service::join_room(username, &request, users).await,
         Action::Message => chat_service::send_message(username, &request, users).await,
-        _ => Err(String::from("Invalid action"))
+        Action::Leave => chat_service::leave_room(username, &request, users).await,
     };
 
     let response = result.map_or_else(
