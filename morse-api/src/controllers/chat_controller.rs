@@ -54,17 +54,17 @@ async fn receive_messages(username: &String, mut receiver: SplitStream<WebSocket
 }
 
 async fn on_request(username: &str, request: Request, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>, redis: RedisCon) {
-    let result = handle_request(username, request, users, redis).await;
+    let result = handle_request(username, &request, users, redis).await;
     let response = result.map_or_else(
-        |error_message| handle_error(error_message),
-        |response_message| Response::success(&response_message)
+        |error_message| handle_error(&request.action, error_message),
+        |response_message| Response::success(&request.action, &response_message)
     );
 
     let _ = user_channel.send(response.as_message())
         .inspect_err(|err| eprintln!("Could not send response to request. {err:?}"));
 }
 
-async fn handle_request(username: &str, request: Request, users: &Arc<UsersChannels>, redis: RedisCon) -> RequestResult<String> {
+async fn handle_request(username: &str, request: &Request, users: &Arc<UsersChannels>, redis: RedisCon) -> RequestResult<String> {
     let target = request.target();
     let body = request.body();
     match request.action {
@@ -76,7 +76,7 @@ async fn handle_request(username: &str, request: Request, users: &Arc<UsersChann
     }
 }
 
-fn handle_error(error: RequestError) -> Response {
+fn handle_error(action: &Action, error: RequestError) -> Response {
     let message = match error {
         RequestError::UnauthorizedUser => "You do not have the permission to do that".to_owned(),
         RequestError::InternalError(err) => {
@@ -86,5 +86,5 @@ fn handle_error(error: RequestError) -> Response {
         RequestError::InvalidRequest(err) => err
     };
 
-    Response::err(&message)
+    Response::action_err(action, &message)
 }

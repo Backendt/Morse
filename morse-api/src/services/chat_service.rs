@@ -11,6 +11,7 @@ use crate::{
         Action,
         Request,
         UsersChannels,
+        ChatMessage,
         Messageable
     },
     database::RedisCon
@@ -108,11 +109,11 @@ pub async fn leave_all(username: &str, users: &Arc<UsersChannels>, redis: RedisC
 pub async fn send_message(username: &str, room_id: &str, message: &str, users: &Arc<UsersChannels>, redis: RedisCon) -> RequestResult<String> {
     let room_users = get_usernames_in_same_room(username, room_id, redis).await?;
 
-    let request = Request::new( // TODO Specify the room
-        Action::Message,
-        username.to_owned(),
-        message.to_owned()
-    );
+    let request = ChatMessage {
+        sender: username.to_owned(),
+        room: room_id.to_owned(),
+        content: message.to_owned()
+    };
 
     send_to_users(request, room_users, users).await
         .map(|_| "Message has been sent".to_owned())
@@ -138,7 +139,7 @@ async fn send_to_room(request: Request, room_id: &str, channels: &Arc<UsersChann
     send_to_users(request, room_users, channels).await
 }
 
-async fn send_to_users(request: Request, room_users: Vec<String>, channels: &Arc<UsersChannels>) -> RequestResult<()> {
+async fn send_to_users(request: impl Messageable, room_users: Vec<String>, channels: &Arc<UsersChannels>) -> RequestResult<()> {
     let mut errors = Vec::with_capacity(room_users.len());
     let users_channels = channels.read().await;
     for room_user in room_users.iter() {

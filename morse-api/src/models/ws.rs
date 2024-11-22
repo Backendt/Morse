@@ -31,26 +31,55 @@ pub enum Status {
     Error
 }
 
+pub trait Messageable: Serialize {
+    fn as_message(&self) -> Message {
+        let as_text = serde_json::to_string(self)
+            .expect("Could not serialize message");
+        Message::text(as_text)
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChatMessage {
+    pub sender: String,
+    pub room: String,
+    pub content: String
+}
+impl Messageable for ChatMessage {}
+
 #[derive(Debug, Serialize)]
 pub struct Response {
     status: Status,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action: Option<Action>,
     message: String
 }
 impl Response {
     pub fn err(message: &str) -> Self {
         Self {
             status: Status::Error,
-            message: message.to_string()
+            action: None,
+            message: message.to_owned()
         }
     }
 
-    pub fn success(message: &str) -> Self {
+    pub fn action_err(action: &Action, message: &str) -> Self {
+        Self {
+            status: Status::Error,
+            action: Some(action.clone()),
+            message: message.to_owned()
+        }
+    }
+
+    pub fn success(action: &Action, message: &str) -> Self {
         Self {
             status: Status::Success,
-            message: message.to_string()
+            action: Some(action.clone()),
+            message: message.to_owned()
         }
     }
 }
+impl Messageable for Response {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
@@ -58,6 +87,7 @@ pub struct Request {
     pub target: Option<String>,
     pub body: Option<String>
 }
+impl Messageable for Request {}
 impl Request {
     pub fn new(action: Action, target: String, body: String) -> Self {
         Self {
@@ -81,13 +111,3 @@ impl Request {
             )
     }
 }
-
-pub trait Messageable: Serialize {
-    fn as_message(&self) -> Message {
-        let as_text = serde_json::to_string(self)
-            .expect("Could not serialize message");
-        Message::text(as_text)
-    }
-}
-impl Messageable for Request {}
-impl Messageable for Response {}
