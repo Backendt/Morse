@@ -27,10 +27,10 @@ pub async fn get_users_in_room(room_id: &str, mut redis: RedisCon) -> RedisResul
 
 pub async fn remove_user(username: &str, room_id: &str, redis: RedisCon) -> RedisResult<bool> {
     let room_key = format!("{ROOM_KEY_PREFIX}{room_id}");
-    redis.clone().lrem(room_key.clone(), 1, username)
+    redis.clone().lrem(room_key, 1, username)
         .and_then(|was_removed: bool| async move {
             if was_removed {
-                remove_room_from_user(&username, &room_key, redis).await
+                remove_room_from_user(&username, &room_id, redis).await
             } else {
                 Ok(was_removed)
             }
@@ -40,10 +40,10 @@ pub async fn remove_user(username: &str, room_id: &str, redis: RedisCon) -> Redi
 
 pub async fn add_user(username: &str, room_id: &str, redis: RedisCon) -> RedisResult<bool> {
     let room_key = format!("{ROOM_KEY_PREFIX}{room_id}"); 
-    redis.clone().lpush_exists(room_key.clone(), username)
+    redis.clone().lpush_exists(room_key, username)
         .and_then(|was_added: bool| async move {
             if was_added {
-                add_room_to_user(&username, &room_key, redis).await
+                add_room_to_user(&username, &room_id, redis).await
             } else {
                 Ok(was_added)
             }
@@ -57,26 +57,18 @@ pub async fn add_user(username: &str, room_id: &str, redis: RedisCon) -> RedisRe
 
 pub async fn get_user_rooms(username: &str, mut redis: RedisCon) -> RedisResult<Vec<String>> {
     let user_key = format!("{USER_KEY_PREFIX}{username}");
-    redis.lrange(user_key, 0, -1)
-        .map_ok(|mut room_keys: Vec<String>| {
-            room_keys.iter_mut()
-                .map(|key|
-                    key.strip_prefix(ROOM_KEY_PREFIX)
-                        .expect("The room key does not start with expected prefix")
-                        .to_owned()
-                ).collect()
-        }).await
+    redis.lrange(user_key, 0, -1).await
         .inspect_err(|err| eprintln!("Could not get rooms for the given user: {err:?}"))
 }
 
-async fn add_room_to_user(username: &str, room_key: &str, mut redis: RedisCon) -> RedisResult<bool> {
+async fn add_room_to_user(username: &str, room_id: &str, mut redis: RedisCon) -> RedisResult<bool> {
     let user_key = format!("{USER_KEY_PREFIX}{username}");
-    redis.lpush(user_key, room_key).await
+    redis.lpush(user_key, room_id).await
         .inspect_err(|err| eprintln!("Could not add room to user: {err:?}"))
 }
 
-async fn remove_room_from_user(username: &str, room_key: &str, mut redis: RedisCon) -> RedisResult<bool> {
+async fn remove_room_from_user(username: &str, room_id: &str, mut redis: RedisCon) -> RedisResult<bool> {
     let user_key = format!("{USER_KEY_PREFIX}{username}");
-    redis.lrem(user_key, 1, room_key).await
+    redis.lrem(user_key, 1, room_id).await
         .inspect_err(|err| eprintln!("Could not remove room from user: {err:?}"))
 }
