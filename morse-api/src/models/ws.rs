@@ -6,6 +6,10 @@ use tokio::sync::{
 use std::collections::HashMap;
 use futures::stream::SplitSink;
 use warp::ws::{WebSocket, Message};
+use crate::models::errors::{
+    RequestResult,
+    RequestError::InvalidRequest
+};
 
 pub type WsSink = SplitSink<WebSocket, Message>;
 pub type UsersChannels = RwLock<HashMap<String, UnboundedSender<Message>>>;
@@ -51,24 +55,29 @@ impl Response {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Request {
     pub action: Action,
-    pub target: String, // TODO Optional for CreateRoom
+    pub target: Option<String>,
     pub body: Option<String>
 }
 impl Request {
-    // TODO Rename to "new"
-    pub fn body(action: Action, target: &String, body: String) -> Self {
+    pub fn new(action: Action, target: String, body: String) -> Self {
         Self {
             action,
-            target: target.clone(),
+            target: Some(target),
             body: Some(body)
         }
     }
 
-    pub fn get_body(&self) -> Result<String, String> {
+    pub fn body(&self) -> RequestResult<String> {
         self.body.clone()
-            .map(Ok)
-            .unwrap_or_else(|| 
-                Err(String::from("The body is required."))
+            .ok_or_else(||
+                InvalidRequest("The body is required.".to_owned())
+            )
+    }
+
+    pub fn target(&self) -> RequestResult<String> {
+        self.target.clone()
+            .ok_or_else(||
+                InvalidRequest("The target is required.".to_owned())
             )
     }
 }

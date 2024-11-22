@@ -11,53 +11,50 @@ use sqlx::MySqlPool;
 use crate::{
     models::{
         auth::User,
-        errors::{InternalError, InvalidRequest}
+        errors::{
+            RequestResult,
+            RequestError::{InternalError, InvalidRequest}
+        }
     },
     repositories::user_repository
 };
 
-pub async fn validate_login(user_request: &User, database: &MySqlPool) -> Result<bool, warp::reject::Rejection> {
-    match user_repository::get_user(&user_request.username, database).await {
-        Ok(user) => {
-            compare_to_hash(&user_request.password, &user.password).map_err(|err|
-                InternalError::new(
-                    format!("User has an invalid hash stored as password. {err:?}")
-                    .as_str()
-                )
-            )
+pub async fn validate_login(request: &User, database: &MySqlPool) -> RequestResult<bool> {
+    let opt_user = user_repository::get_user(&request.username, database).await
+        .map_err(|err| InternalError(format!("Could not get user to validate login. {err:?}")))?;
+    
+    match opt_user {
+        Some(user) => {
+            compare_to_hash(&request.password, &user.password)
+                .map_err(|err| InternalError(
+                    format!("Could not compare request password to stored user hash. {err:?}")
+                ))
         },
-        Err(err) => {
-            if let Some(_user_not_found) = err.find::<InvalidRequest>() {
-                let _ = hash(&user_request.username); // Required to avoid timing attack
-                return Ok(false);
-            }
-            Err(err)
+        None => {
+            let _ = hash(&request.username); // Required to avoid timing attack
+            Ok(false)
         }
     }
 }
 
-pub async fn register_user(user_request: &User, database: &MySqlPool) -> Result<(), warp::reject::Rejection> {
-    let user_exists = user_repository::exists(&user_request.username, database).await?;
+pub async fn register_user(request: &User, database: &MySqlPool) -> RequestResult<()> {
+    let user_exists = user_repository::exists(&request.username, database).await
+        .map_err(|err| InternalError(format!("Could not check if user exist. {err:?}")))?;
 
-    let Ok(hashed_password) = hash(&user_request.password) else {
-        return Err(InvalidRequest::new("Could not hash the given password"));
+    let Ok(hashed_password) = hash(&request.password) else {
+        return Err(
+            InvalidRequest("Could not hash the given password".to_owned())
+        );
     };
 
     let hashed_user = User {
-        username: user_request.username.clone(),
+        username: request.username.to_owned(),
         password: hashed_password
     };
 
     if !user_exists {
-        let created_user = user_repository::create_user(&hashed_user, database).await; // TODO don't block current thread
-        if let Err(err) = created_user {
-            return Err(
-                InternalError::new(
-                    format!("Could not save user. {err:?}")
-                    .as_str()
-                )
-            );
-        }
+        let _ = user_repository::create_user(&hashed_user, database).await
+            .map_err(|err| InternalError(format!("Could not save user. {err:?}")))?;
     }
 
     Ok(())

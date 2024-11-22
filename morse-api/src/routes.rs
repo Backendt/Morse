@@ -21,7 +21,7 @@ use super::{
     models::{
         APIMessage,
         ws::UsersChannels,
-        errors::*
+        errors::RequestError::{self, *}
     },
     database::RedisCon
 };
@@ -82,14 +82,12 @@ fn with_users(users: Arc<UsersChannels>) -> impl Filter<Extract = (Arc<UsersChan
 
 // Error handling
 
-async fn handle_rejection(err: warp::reject::Rejection) -> Result<impl Reply, Rejection> {
+async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     let message: String;
     let status: StatusCode;
-
-    // Invalid Request
-    if let Some(invalid_request) = err.find::<InvalidRequest>() {
-        message = invalid_request.message.clone();
-        status = StatusCode::BAD_REQUEST;
+    // Custom HTTP Errors
+    if let Some(http_rejection) = err.find::<RequestError>() {
+        (message, status) = handle_custom_rejection(http_rejection);
 
     // Deserialization Error
     } else if let Some(bad_request) = err.find::<warp::filters::body::BodyDeserializeError>() {
@@ -104,22 +102,22 @@ async fn handle_rejection(err: warp::reject::Rejection) -> Result<impl Reply, Re
         } else {
             return Err(err);
         }
-
-    // User denied
-    } else if let Some(_) = err.find::<UnauthorizedUser>() {
-        message = "You are not allowed".to_string();
-        status = StatusCode::FORBIDDEN;
-
-    // Internal Errors
-    } else if let Some(internal_error) = err.find::<InternalError>() {
-        eprintln!("An error occured: {}", internal_error.message);
-        message = "An unexpected error occured. Please try again later.".to_string();
-        status = StatusCode::INTERNAL_SERVER_ERROR;
-
     } else {
         return Err(err);
     }
 
     let response = APIMessage::new(&message, status);
     return Ok(response.as_reply())
+}
+
+fn handle_custom_rejection(rejection: &RequestError) -> (String, StatusCode) {
+    let response = match rejection {
+        InternalError(message) => {
+            eprintln!("An unexpected error occured: {message}");
+            "An unexpected error occured. Please try again later"
+        },
+        UnauthorizedUser => "You are not allowed",
+        InvalidRequest(message) => message
+    };
+    (response.to_owned(), rejection.status_code())
 }

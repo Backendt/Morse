@@ -13,7 +13,7 @@ use crate::{
     models::{
         auth::{User, JwtResponse},
         APIMessage,
-        errors::{InvalidRequest, UnauthorizedUser, InternalError}
+        errors::RequestError::*
     },
     services::{user_service, jwt_service}
 };
@@ -23,7 +23,7 @@ const BEARER: &str = "Bearer ";
 pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
     let is_valid = user_service::validate_login(&user_request, &database).await?;
     if !is_valid {
-        return Err(InvalidRequest::new("Invalid credentials"));
+        return InvalidRequest("Invalid credentials".to_owned()).into();
     }
 
     match jwt_service::create_jwt(&user_request) {
@@ -31,12 +31,9 @@ pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Re
             let response = JwtResponse { token };
             Ok(with_status(json(&response), StatusCode::OK))
         },
-        Err(err) => Err(
-            InternalError::new(
-                format!("Could not create jwt for user. {err:?}")
-                .as_str()
-            )
-        )
+        Err(err) => InternalError(
+            format!("Could not create jwt for user. {err:?}")
+        ).into()
     }
 }
 
@@ -53,5 +50,5 @@ pub async fn get_current_username(auth_header: String) -> WebResult<String> {
             return Ok(username);
         }
     }
-    Err(UnauthorizedUser::new())
+    UnauthorizedUser.into()
 }

@@ -13,8 +13,8 @@ const USER_KEY_PREFIX: &str = "user:";
 pub async fn create_room(username: &str, redis: RedisCon) -> RedisResult<String> {
     let room_id = Uuid::new_v4().simple().to_string();
     let room_key = format!("{ROOM_KEY_PREFIX}{room_id}");
-    redis.clone().lpush(room_key.clone(), username)
-        .and_then(|_: ()| add_room_to_user(username, &room_key, redis)).await
+    redis.clone().lpush(room_key, username)
+        .and_then(|_: ()| add_room_to_user(username, &room_id, redis)).await
         .inspect_err(|err| eprintln!("Could not create room: {err:?}"))
         .map(|_| room_id)
 }
