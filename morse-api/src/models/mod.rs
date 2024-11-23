@@ -1,12 +1,11 @@
-use warp::{
-    reply::{json, Json, WithStatus, with_status},
-    http::StatusCode
-};
-
 pub mod auth;
 pub mod errors;
 pub mod ws;
 
+use warp::{
+    reply::{json, Json, WithStatus, with_status},
+    http::StatusCode
+};
 use serde::Serialize;
 
 #[derive(Serialize)]

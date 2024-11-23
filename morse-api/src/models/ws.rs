@@ -4,15 +4,31 @@ use tokio::sync::{
     RwLock
 };
 use std::collections::HashMap;
+use std::sync::Arc;
 use futures::stream::SplitSink;
 use warp::ws::{WebSocket, Message};
-use crate::models::errors::{
-    RequestResult,
-    RequestError::InvalidRequest
+use crate::{
+    database::RedisCon,
+    models::errors::{
+        RequestResult,
+        RequestError::InvalidRequest
+    }
 };
 
 pub type WsSink = SplitSink<WebSocket, Message>;
 pub type UsersChannels = RwLock<HashMap<String, UnboundedSender<Message>>>;
+
+#[derive(Debug, Clone)]
+pub struct WsEnvironment {
+    pub username: String,
+    pub users_channels: Arc<UsersChannels>,
+    pub redis: RedisCon
+}
+impl WsEnvironment {
+    pub fn redis(&self) -> RedisCon {
+        self.redis.clone()
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]

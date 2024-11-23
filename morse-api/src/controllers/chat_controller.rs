@@ -1,24 +1,22 @@
 use warp::ws::{WebSocket, Message};
 use futures::{StreamExt, SinkExt, stream::SplitStream};
 use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver};
-use std::sync::Arc;
 
 use crate::{
     services::{ws_service, chat_service},
     models::errors::{RequestResult, RequestError},
     models::ws::{
-        UsersChannels,
+        WsEnvironment,
         Response,
         Request,
         Action,
         Messageable
-    },
-    database::RedisCon
+    }
 };
 
-pub async fn on_client_connect(username: String, mut socket: WebSocket, users: Arc<UsersChannels>, redis: RedisCon) {
-    match ws_service::add_client(&username, &users).await {
-        Ok((user_sender, user_receiver)) => establish_connection(user_sender, user_receiver, username, socket, users, redis).await,
+pub async fn on_client_connect(mut socket: WebSocket, environment: WsEnvironment) {
+    match ws_service::add_client(&environment.username, &environment.users_channels).await {
+        Ok((user_sender, user_receiver)) => establish_connection(user_sender, user_receiver, socket, environment).await,
         Err(error_message) => {
             let response = Response::err(&error_message);
             let _ = socket.send(response.as_message()).await
@@ -29,25 +27,25 @@ pub async fn on_client_connect(username: String, mut socket: WebSocket, users: A
     };
 }
 
-async fn establish_connection(user_sender: UnboundedSender<Message>, user_receiver: UnboundedReceiver<Message>, username: String, socket: WebSocket, users: Arc<UsersChannels>, redis: RedisCon) {
+async fn establish_connection(user_sender: UnboundedSender<Message>, user_receiver: UnboundedReceiver<Message>, socket: WebSocket, environment: WsEnvironment) {
     let (sender, receiver) = socket.split();
     ws_service::start_forwarding(user_receiver, sender).await;
     
     // Start listening
-    receive_messages(&username, receiver, user_sender, &users, &redis).await;
+    receive_messages(receiver, user_sender, &environment).await;
 
     // On disconnect
-    ws_service::remove_client(&username, &users).await;
-    let _ = chat_service::leave_all(&username, &users, redis.clone()).await
+    ws_service::remove_client(&environment.username, &environment.users_channels).await;
+    let _ = chat_service::leave_all(&environment).await
         .inspect_err(|err| eprintln!("Could not leave all rooms when disconnecting. {err:?}"));
 }
 
-async fn receive_messages(username: &String, mut receiver: SplitStream<WebSocket>, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>, redis: &RedisCon) {
+async fn receive_messages(mut receiver: SplitStream<WebSocket>, user_channel: UnboundedSender<Message>, environment: &WsEnvironment) {
     while let Some(received) = receiver.next().await {
         let Ok(raw_message) = received else { break; };
 
         match ws_service::parse_message(raw_message) {
-            Ok(message) => on_request(&username, message, user_channel.clone(), &users, redis.clone()).await,
+            Ok(message) => on_request(message, user_channel.clone(), environment).await,
             Err(error_message) => {
                 let response = Response::err(&error_message);
                 let _ = user_channel.send(response.as_message())
@@ -57,8 +55,8 @@ async fn receive_messages(username: &String, mut receiver: SplitStream<WebSocket
     }
 }
 
-async fn on_request(username: &str, request: Request, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>, redis: RedisCon) {
-    let result = handle_request(username, &request, users, redis).await;
+async fn on_request(request: Request, user_channel: UnboundedSender<Message>, environment: &WsEnvironment) {
+    let result = handle_request(&request, environment).await;
     let response = result.map_or_else(
         |error_message| handle_error(&request.action, error_message),
         |response_message| Response::success(&request.action, &response_message)
@@ -68,15 +66,15 @@ async fn on_request(username: &str, request: Request, user_channel: UnboundedSen
         .inspect_err(|err| eprintln!("Could not send response to request. {err:?}"));
 }
 
-async fn handle_request(username: &str, request: &Request, users: &Arc<UsersChannels>, redis: RedisCon) -> RequestResult<String> {
+async fn handle_request(request: &Request, environment: &WsEnvironment) -> RequestResult<String> {
     let target = request.target();
     let body = request.body();
     match request.action {
-        Action::CreateRoom => chat_service::create_room(username, redis).await,
-        Action::Invite => chat_service::invite_in_room(username, &target?, &body?, users, redis).await,
-        Action::Join => chat_service::join_room(username, &target?, users, redis).await,
-        Action::Message => chat_service::send_message(username, &target?, &body?, users, redis).await,
-        Action::Leave => chat_service::leave_room(username, &target?, users, redis).await,
+        Action::CreateRoom => chat_service::create_room(&environment.username, environment.redis()).await,
+        Action::Invite => chat_service::invite_in_room(&target?, &body?, environment).await,
+        Action::Join => chat_service::join_room(&target?, environment).await,
+        Action::Message => chat_service::send_message(&target?, &body?, environment).await,
+        Action::Leave => chat_service::leave_room(&target?, environment).await,
     }
 }
 

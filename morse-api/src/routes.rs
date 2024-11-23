@@ -20,7 +20,7 @@ use super::{
     controllers::*,
     models::{
         APIMessage,
-        ws::UsersChannels,
+        ws::{UsersChannels, WsEnvironment},
         errors::RequestError::{self, *}
     },
     database::RedisCon
@@ -38,11 +38,18 @@ pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>)
 fn websocket(redis: &RedisCon, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("stream")
         .and(authenticated())
-        .and(warp::ws())
         .and(with_users(users.clone()))
         .and(with_redis(redis.clone()))
-        .map(|username: String, request: Ws, users_sockets: Arc<UsersChannels>, redis: RedisCon|
-            request.on_upgrade(|socket| chat_controller::on_client_connect(username, socket, users_sockets, redis)))
+        .map(|username: String, users_sockets: Arc<UsersChannels>, redis: RedisCon|
+            WsEnvironment {
+                username,
+                users_channels: users_sockets,
+                redis
+            }
+        ).and(warp::ws())
+        .map(|environment: WsEnvironment, request: Ws|
+            request.on_upgrade(|socket| chat_controller::on_client_connect(socket, environment))
+        )
 }
 
 fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
