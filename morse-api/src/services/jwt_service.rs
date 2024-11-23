@@ -1,9 +1,9 @@
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 
-use crate::models::auth::{JwtClaims, User};
+use crate::models::auth::JwtClaims;
 
-pub fn create_jwt(user: &User) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn create_jwt(username: &str) -> Result<String, jsonwebtoken::errors::Error> {
     let expiration = Utc::now()
         .checked_add_signed(chrono::Duration::hours(get_jwt_expiration_delay()))
         .expect("Could not add the given hours to current time. Check the JWT_EXP_HOURS environment variable.")
@@ -11,7 +11,7 @@ pub fn create_jwt(user: &User) -> Result<String, jsonwebtoken::errors::Error> {
 
     let claims = JwtClaims {
         exp: expiration as usize,
-        sub: user.username.to_owned()
+        sub: username.to_owned()
     };
 
     let header = Header::new(Algorithm::HS512);

@@ -25,6 +25,7 @@ const JSON_BYTES_SIZE_LIMIT: u64 = 150;
 
 pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     login(&mysql)
+        .or(anonymous_login())
         .or(register(&mysql))
         .or(websocket(&redis, &users))
         .recover(handle_rejection)
@@ -52,6 +53,12 @@ fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
         .and(warp::body::json())
         .and(with_mysql(database.clone()))
         .and_then(auth_controller::login)
+}
+
+fn anonymous_login() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    warp::path!("anonymous")
+        .and(warp::get())
+        .and_then(auth_controller::anonymous_login)
 }
 
 fn register(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {

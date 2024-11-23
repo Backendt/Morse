@@ -18,6 +18,7 @@ use crate::{
     services::{user_service, jwt_service}
 };
 
+const ANONYMOUS_USER_PREFIX: &str = "anon-";
 const BEARER: &str = "Bearer ";
 
 pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
@@ -26,7 +27,7 @@ pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Re
         return InvalidRequest("Invalid credentials".to_owned()).into();
     }
 
-    match jwt_service::create_jwt(&user_request) {
+    match jwt_service::create_jwt(&user_request.username) {
         Ok(token) => {
             let response = JwtResponse { token };
             Ok(with_status(json(&response), StatusCode::OK))
@@ -42,6 +43,21 @@ pub async fn register(raw_user_request: User, database: MySqlPool) -> WebResult<
     user_service::register_user(&user_request, &database).await?;
     let response = APIMessage::new("User was created if it didn't already exist", StatusCode::CREATED);
     Ok(response.as_reply())
+}
+
+pub async fn anonymous_login() -> WebResult<impl Reply> {
+    let random_id = uuid::Uuid::new_v4().simple().to_string();
+    let username = format!("{ANONYMOUS_USER_PREFIX}{random_id}");
+    
+    match jwt_service::create_jwt(&username) {
+        Ok(token) => {
+            let response = JwtResponse { token };
+            Ok(with_status(json(&response), StatusCode::OK))
+        },
+        Err(err) => InternalError(
+            format!("Could not create anonymous jwt. {err:?}")
+        ).into()
+    }
 }
 
 pub async fn get_current_username(auth_header: String) -> WebResult<String> {
