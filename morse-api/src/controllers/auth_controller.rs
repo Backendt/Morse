@@ -27,9 +27,10 @@ pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Re
         return InvalidRequest("Invalid credentials".to_owned()).into();
     }
 
-    match jwt_service::create_jwt(&user_request.username) {
+    let username = &user_request.username;
+    match jwt_service::create_jwt(username) {
         Ok(token) => {
-            let response = JwtResponse { token };
+            let response = JwtResponse { username: username.to_owned(), token };
             Ok(with_status(json(&response), StatusCode::OK))
         },
         Err(err) => InternalError(
@@ -51,7 +52,7 @@ pub async fn anonymous_login() -> WebResult<impl Reply> {
     
     match jwt_service::create_jwt(&username) {
         Ok(token) => {
-            let response = JwtResponse { token };
+            let response = JwtResponse { username, token };
             Ok(with_status(json(&response), StatusCode::OK))
         },
         Err(err) => InternalError(

@@ -32,6 +32,7 @@ impl User {
 
 #[derive(Serialize)]
 pub struct JwtResponse {
+    pub username: String,
     pub token: String
 }
 
