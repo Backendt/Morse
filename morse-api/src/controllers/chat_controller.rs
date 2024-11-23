@@ -1,13 +1,10 @@
 use warp::ws::{WebSocket, Message};
 use futures::{StreamExt, SinkExt, stream::SplitStream};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver};
 use std::sync::Arc;
 
 use crate::{
-    services::{
-        ws_service,
-        chat_service
-    },
+    services::{ws_service, chat_service},
     models::errors::{RequestResult, RequestError},
     models::ws::{
         UsersChannels,
@@ -21,14 +18,7 @@ use crate::{
 
 pub async fn on_client_connect(username: String, mut socket: WebSocket, users: Arc<UsersChannels>, redis: RedisCon) {
     match ws_service::add_client(&username, &users).await {
-        Ok((user_sender, user_receiver)) => {
-            let (sender, receiver) = socket.split();
-            ws_service::start_forwarding(user_receiver, sender).await;
-            receive_messages(&username, receiver, user_sender, &users, &redis).await;
-            ws_service::remove_client(&username, &users).await;
-            let _ = chat_service::leave_all(&username, &users, redis.clone()).await
-                .inspect_err(|err| eprintln!("Could not leave all rooms when disconnecting. {err:?}"));
-        },
+        Ok((user_sender, user_receiver)) => establish_connection(user_sender, user_receiver, username, socket, users, redis).await,
         Err(error_message) => {
             let response = Response::err(&error_message);
             let _ = socket.send(response.as_message()).await
@@ -37,6 +27,19 @@ pub async fn on_client_connect(username: String, mut socket: WebSocket, users: A
                 .inspect_err(|err| eprintln!("Could not gracefully close duplicate user connection. {err:?}"));
         }
     };
+}
+
+async fn establish_connection(user_sender: UnboundedSender<Message>, user_receiver: UnboundedReceiver<Message>, username: String, socket: WebSocket, users: Arc<UsersChannels>, redis: RedisCon) {
+    let (sender, receiver) = socket.split();
+    ws_service::start_forwarding(user_receiver, sender).await;
+    
+    // Start listening
+    receive_messages(&username, receiver, user_sender, &users, &redis).await;
+
+    // On disconnect
+    ws_service::remove_client(&username, &users).await;
+    let _ = chat_service::leave_all(&username, &users, redis.clone()).await
+        .inspect_err(|err| eprintln!("Could not leave all rooms when disconnecting. {err:?}"));
 }
 
 async fn receive_messages(username: &String, mut receiver: SplitStream<WebSocket>, user_channel: UnboundedSender<Message>, users: &Arc<UsersChannels>, redis: &RedisCon) {
