@@ -1,11 +1,6 @@
 use warp::{
-    Filter,
-    header,
-    http::{
-        header::AUTHORIZATION,
-        StatusCode
-    },
-    Reply,
+    http::{header::AUTHORIZATION, StatusCode},
+    Filter, header, Reply,
     reject::Rejection,
     ws::Ws
 };
@@ -26,6 +21,8 @@ use super::{
     database::RedisCon
 };
 
+const JSON_BYTES_SIZE_LIMIT: u64 = 150;
+
 pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     login(&mysql)
         .or(register(&mysql))
@@ -41,11 +38,7 @@ fn websocket(redis: &RedisCon, users: &Arc<UsersChannels>) -> impl Filter<Extrac
         .and(with_users(users.clone()))
         .and(with_redis(redis.clone()))
         .map(|username: String, users_sockets: Arc<UsersChannels>, redis: RedisCon|
-            WsEnvironment {
-                username,
-                users_channels: users_sockets,
-                redis
-            }
+            WsEnvironment {username, users_channels: users_sockets, redis}
         ).and(warp::ws())
         .map(|environment: WsEnvironment, request: Ws|
             request.on_upgrade(|socket| chat_controller::on_client_connect(socket, environment))
@@ -55,6 +48,7 @@ fn websocket(redis: &RedisCon, users: &Arc<UsersChannels>) -> impl Filter<Extrac
 fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("login")
         .and(warp::post())
+        .and(warp::body::content_length_limit(JSON_BYTES_SIZE_LIMIT))
         .and(warp::body::json()) // TODO Set a size limit with a custom json filter
         .and(with_mysql(database.clone()))
         .and_then(auth_controller::login)
@@ -63,6 +57,7 @@ fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
 fn register(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("register")
         .and(warp::post())
+        .and(warp::body::content_length_limit(JSON_BYTES_SIZE_LIMIT))
         .and(warp::body::json())
         .and(with_mysql(database.clone()))
         .and_then(auth_controller::register)
@@ -104,11 +99,15 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     // Missing Authorization header
     } else if let Some(missing_header) = err.find::<warp::reject::MissingHeader>() {
         if missing_header.to_string().contains(AUTHORIZATION.as_str()) {
-            message = "You need authentication".to_string();
+            message = "You need authentication".to_owned();
             status = StatusCode::UNAUTHORIZED;
         } else {
             return Err(err);
         }
+    // Request too large
+    } else if let Some(_) = err.find::<warp::reject::PayloadTooLarge>() {
+        message = "Your request is too big".to_owned();
+        status = StatusCode::PAYLOAD_TOO_LARGE;
     } else {
         return Err(err);
     }
