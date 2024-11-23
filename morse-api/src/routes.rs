@@ -49,7 +49,7 @@ fn login(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = Reje
     warp::path!("login")
         .and(warp::post())
         .and(warp::body::content_length_limit(JSON_BYTES_SIZE_LIMIT))
-        .and(warp::body::json()) // TODO Set a size limit with a custom json filter
+        .and(warp::body::json())
         .and(with_mysql(database.clone()))
         .and_then(auth_controller::login)
 }
