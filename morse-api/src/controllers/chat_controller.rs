@@ -19,11 +19,10 @@ use crate::{
     database::RedisCon
 };
 
-pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<UsersChannels>, redis: RedisCon) {
-    let (mut sender, receiver) = socket.split();
-    
+pub async fn on_client_connect(username: String, mut socket: WebSocket, users: Arc<UsersChannels>, redis: RedisCon) {
     match ws_service::add_client(&username, &users).await {
         Ok((user_sender, user_receiver)) => {
+            let (sender, receiver) = socket.split();
             ws_service::start_forwarding(user_receiver, sender).await;
             receive_messages(&username, receiver, user_sender, &users, &redis).await;
             ws_service::remove_client(&username, &users).await;
@@ -32,8 +31,10 @@ pub async fn on_client_connect(username: String, socket: WebSocket, users: Arc<U
         },
         Err(error_message) => {
             let response = Response::err(&error_message);
-            let _ = sender.send(response.as_message()).await
+            let _ = socket.send(response.as_message()).await
                 .inspect_err(|err| eprintln!("Could not send error message to user. {err:?}"));
+            let _ = socket.close().await
+                .inspect_err(|err| eprintln!("Could not gracefully close duplicate user connection. {err:?}"));
         }
     };
 }
