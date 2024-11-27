@@ -29,6 +29,7 @@ pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>)
         .or(register(&mysql))
         .or(websocket(&redis, &users))
         .recover(handle_rejection)
+        .boxed().with(cors())
 }
 
 // Endpoints
@@ -71,6 +72,13 @@ fn register(database: &MySqlPool) -> impl Filter<Extract = impl Reply, Error = R
 }
 
 // Filters
+
+fn cors() -> warp::cors::Builder {
+    warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST"])
+        .allow_header("content-type")
+}
 
 fn authenticated() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
     header::<String>(AUTHORIZATION.as_str())
