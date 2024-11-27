@@ -31,9 +31,9 @@ services:
     container_name: morse-api
     build: ./morse-api/
     restart: always
-    ports:
-      - "8080:8080"
     depends_on:
+      redis:
+        condition: service_started
       mysql:
         condition: service_healthy
     environment:
@@ -45,6 +45,21 @@ services:
       - REDIS_PASSWORD
       - JWT_SECRET
       - JWT_EXP_HOURS
+      - WEB_DOMAIN
+
+  nginx-front:
+    container_name: morse-web
+    build: ./morse-web/
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      rust-api:
+        condition: service_started
+    environment:
+      - API_HOST=morse-api
+      - API_PORT=8080
+      - WEB_DOMAIN
 
 volumes:
   mysql-data: {}
