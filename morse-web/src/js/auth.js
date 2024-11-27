@@ -14,9 +14,21 @@ function postToApi(path, body) {
 }
 
 async function handleResponse(response) {
-    // TODO
-    let content = await response.text();
-    alert("status: " + response.status + ", content: " + content);
+    let json = await response.json();
+    if(isMessage(json)) {
+        displayResponse(json);
+        return;
+    }
+
+    let is_token = "token" in json;
+    if(!is_token) {
+        console.log("[ERROR] Received unexpected response for API");
+        return;
+    }
+
+    let remember_me = document.getElementById("remember").checked;
+    setToken(json["token"], remember_me);
+    window.location.href = "/chat"; // Redirect to /chat
 }
 
 function getUserInput() {

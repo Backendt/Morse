@@ -5,7 +5,9 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <script defer src="js/auth.js"></script>
+        <script defer src="js/messages.js"></script>
+        <script defer src="js/token.js"></script>
+        <script defer src="js/auth.js"></script>
     </head>
     <body>
         <div class="center">
@@ -13,8 +15,12 @@
             <h4>-- --- .-. ... .</h4>
             <main>
                 <form id="user-form">
-                    <input id="username" name="username" type="text" placeholder="Username" autofocus required/>
-                    <input id="password" name="password" type="password" placeholder="Password" required/>
+                    <input id="username" type="text" placeholder="Username" autofocus required/>
+                    <input id="password" type="password" placeholder="Password" required/>
+                    <div>
+                        <label for="remember">Remember me</label>
+                        <input id="remember" type="checkbox" value="yes"/>
+                    </div>
                     <input type="submit" value="Submit"/>
                 </form>
                 <div>
