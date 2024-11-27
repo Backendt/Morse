@@ -1,5 +1,6 @@
 use warp::{
     http::{header::AUTHORIZATION, StatusCode},
+    reply::{json, with_status},
     Filter, header, Reply,
     reject::Rejection,
     ws::Ws
@@ -14,7 +15,7 @@ use sqlx::MySqlPool;
 use super::{
     controllers::*,
     models::{
-        APIMessage,
+        Response,
         ws::{UsersChannels, WsEnvironment},
         errors::RequestError::{self, *}
     },
@@ -127,8 +128,8 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
         return Err(err);
     }
 
-    let response = APIMessage::new(&message, status);
-    return Ok(response.as_reply())
+    let response = Response::err(&message);
+    return Ok(with_status(json(&response), status));
 }
 
 fn handle_custom_rejection(rejection: &RequestError) -> (String, StatusCode) {

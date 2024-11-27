@@ -9,6 +9,7 @@ use futures::stream::SplitSink;
 use warp::ws::{WebSocket, Message};
 use crate::{
     database::RedisCon,
+    models::Response,
     models::errors::{
         RequestResult,
         RequestError::InvalidRequest
@@ -40,13 +41,6 @@ pub enum Action {
     Message,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Status {
-    Success,
-    Error
-}
-
 pub trait Messageable: Serialize {
     fn as_message(&self) -> Message {
         let as_text = serde_json::to_string(self)
@@ -62,39 +56,6 @@ pub struct ChatMessage {
     pub content: String
 }
 impl Messageable for ChatMessage {}
-
-#[derive(Debug, Serialize)]
-pub struct Response {
-    status: Status,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    action: Option<Action>,
-    message: String
-}
-impl Response {
-    pub fn err(message: &str) -> Self {
-        Self {
-            status: Status::Error,
-            action: None,
-            message: message.to_owned()
-        }
-    }
-
-    pub fn action_err(action: &Action, message: &str) -> Self {
-        Self {
-            status: Status::Error,
-            action: Some(action.clone()),
-            message: message.to_owned()
-        }
-    }
-
-    pub fn success(action: &Action, message: &str) -> Self {
-        Self {
-            status: Status::Success,
-            action: Some(action.clone()),
-            message: message.to_owned()
-        }
-    }
-}
 impl Messageable for Response {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

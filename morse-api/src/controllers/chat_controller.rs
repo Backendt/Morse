@@ -4,10 +4,10 @@ use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver};
 
 use crate::{
     services::{ws_service, chat_service},
+    models::Response,
     models::errors::{RequestResult, RequestError},
     models::ws::{
         WsEnvironment,
-        Response,
         Request,
         Action,
         Messageable
@@ -59,7 +59,7 @@ async fn on_request(request: Request, user_channel: UnboundedSender<Message>, en
     let result = handle_request(&request, environment).await;
     let response = result.map_or_else(
         |error_message| handle_error(&request.action, error_message),
-        |response_message| Response::success(&request.action, &response_message)
+        |response_message| Response::action_success(&request.action, &response_message)
     );
 
     let _ = user_channel.send(response.as_message())
