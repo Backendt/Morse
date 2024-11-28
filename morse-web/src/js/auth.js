@@ -22,7 +22,7 @@ async function handleResponse(response) {
 
     let is_token = "token" in json;
     if(!is_token) {
-        console.log("[ERROR] Received unexpected response for API");
+        console.error("[ERROR] Received unexpected response for API");
         return;
     }
 
