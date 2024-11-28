@@ -1,4 +1,5 @@
 const WEBSOCKET_ENDPOINT = "/chat";
+const RECONNECTION_DELAY_SECONDS = 10;
 
 var api_socket = null;
 establishWebsocket();
@@ -17,7 +18,7 @@ async function establishWebsocket() {
     connectToWebsocket(token);
 }
 
-function connectToWebsocket(token) {
+function connectToWebsocket(token, is_retrying=false) {
     if(api_socket != null) {
         console.error("[ERROR] Tried connecting to websocket multiple times");
         return;
@@ -27,6 +28,7 @@ function connectToWebsocket(token) {
     api_socket = new WebSocket(socket_url);
 
     api_socket.onopen = () => {
+        is_retrying = false;
         console.log("Connected to websocket.");
         api_socket.send(token);
     };
@@ -36,9 +38,14 @@ function connectToWebsocket(token) {
     };
 
     api_socket.onclose = (event) => {
-        console.log("Disconnected from websocket for reason: '" + event.reason + "' and code: " + event.code);
         api_socket = null;
-        connectToWebsocket(token);
+        if(is_retrying) {
+            setTimeout(() => connectToWebsocket(token, true), RECONNECTION_DELAY_SECONDS * 1000);
+            return;
+        }
+
+        console.log("Disconnected from websocket for reason: '" + event.reason + "' and code: " + event.code);
+        connectToWebsocket(token, true);
     };
 
     api_socket.onmessage = onWsMessage;
