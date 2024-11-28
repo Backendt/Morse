@@ -1,33 +1,34 @@
 const WEBSOCKET_ENDPOINT = "/stream";
 
 var api_socket = null;
-tryEstablishingWebsocket();
+establishWebsocket();
 
 function getWebsocketUrl() {
     return "ws://api." + window.location.host + "/stream";
 }
 
-async function tryEstablishingWebsocket() {
+async function establishWebsocket() {
     let token = getToken();
     if(token == null) {
         console.warn("Tried establishing websocket connection without being logged-in");
         window.location.href = "/login";
         return;
     }
-    establishWebsocket(token);
+    connectToWebsocket(token);
 }
 
-function establishWebsocket(token) {
+function connectToWebsocket(token) {
     if(api_socket != null) {
-        console.error("[ERROR] Tried establishing websocket connection multiple times");
+        console.error("[ERROR] Tried connecting to websocket multiple times");
         return;
     };
 
     let socket_url = getWebsocketUrl();
-    api_socket = new WebSocket(socket_url); // Looks like there is not way to send Authorization header... time to change server side implementation
+    api_socket = new WebSocket(socket_url);
 
     api_socket.onopen = () => {
-        console.log("Connected to websocket");
+        console.log("Connected to websocket.");
+        api_socket.send(token);
     };
 
     api_socket.onerror = (event) => {

@@ -8,7 +8,6 @@ pub type RequestResult<T> = Result<T, RequestError>;
 
 #[derive(Debug)]
 pub enum RequestError {
-    UnauthorizedUser,
     InternalError(String),
     InvalidRequest(String)
 }
@@ -21,7 +20,6 @@ impl <T>Into<Result<T, Rejection>> for RequestError {
 impl RequestError {
     pub fn status_code(&self) -> StatusCode {
         match self {
-            RequestError::UnauthorizedUser => StatusCode::FORBIDDEN,
             RequestError::InvalidRequest(_) => StatusCode::BAD_REQUEST,
             RequestError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR
         }

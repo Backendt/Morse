@@ -43,8 +43,7 @@ pub async fn start_forwarding(mut receiver: UnboundedReceiver<Message>, mut sink
     })
 }
 
-pub fn parse_message(raw_message: Message) -> Result<Request, String> {
+pub fn parse_message(raw_message: Message) -> Result<Request, serde_json::Error> {
     let content = raw_message.as_bytes(); 
     serde_json::from_slice::<Request>(content)
-        .map_err(|_| String::from("Could not parse request."))
 }

@@ -19,7 +19,6 @@ use crate::{
 };
 
 const ANONYMOUS_USER_PREFIX: &str = "anon-";
-const BEARER: &str = "Bearer ";
 
 pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
     let is_valid = user_service::validate_login(&user_request, &database).await?;
@@ -59,14 +58,4 @@ pub async fn anonymous_login() -> WebResult<impl Reply> {
             format!("Could not create anonymous jwt. {err:?}")
         ).into()
     }
-}
-
-pub async fn get_current_username(auth_header: String) -> WebResult<String> {
-    if auth_header.starts_with(BEARER) {
-        let jwt = auth_header.trim_start_matches(BEARER);
-        if let Some(username) = jwt_service::get_jwt_username(jwt) {
-            return Ok(username);
-        }
-    }
-    UnauthorizedUser.into()
 }

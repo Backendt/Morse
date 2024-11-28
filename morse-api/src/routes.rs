@@ -1,7 +1,7 @@
 use warp::{
     http::{header::AUTHORIZATION, StatusCode},
     reply::{json, with_status},
-    Filter, header, Reply,
+    Filter, Reply,
     reject::Rejection,
     ws::Ws
 };
@@ -16,7 +16,7 @@ use super::{
     controllers::*,
     models::{
         Response,
-        ws::{UsersChannels, WsEnvironment},
+        ws::UsersChannels,
         errors::RequestError::{self, *}
     },
     database::RedisCon
@@ -37,14 +37,11 @@ pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>)
 
 fn websocket(redis: &RedisCon, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path!("stream")
-        .and(authenticated())
         .and(with_users(users.clone()))
         .and(with_redis(redis.clone()))
-        .map(|username: String, users_sockets: Arc<UsersChannels>, redis: RedisCon|
-            WsEnvironment {username, users_channels: users_sockets, redis}
-        ).and(warp::ws())
-        .map(|environment: WsEnvironment, request: Ws|
-            request.on_upgrade(|socket| chat_controller::on_client_connect(socket, environment))
+        .and(warp::ws())
+        .map(|users_sockets: Arc<UsersChannels>, redis: RedisCon, request: Ws|
+            request.on_upgrade(|socket| chat_controller::on_client_connect(socket, users_sockets, redis))
         )
 }
 
@@ -79,11 +76,6 @@ fn cors() -> warp::cors::Builder {
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST"])
         .allow_header("content-type")
-}
-
-fn authenticated() -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
-    header::<String>(AUTHORIZATION.as_str())
-        .and_then(auth_controller::get_current_username)
 }
 
 fn with_mysql(database: MySqlPool) -> impl Filter<Extract = (MySqlPool,), Error = Infallible> + Clone {
@@ -138,7 +130,6 @@ fn handle_custom_rejection(rejection: &RequestError) -> (String, StatusCode) {
             eprintln!("An unexpected error occured: {message}");
             "An unexpected error occured. Please try again later"
         },
-        UnauthorizedUser => "You are not allowed",
         InvalidRequest(message) => message
     };
     (response.to_owned(), rejection.status_code())
