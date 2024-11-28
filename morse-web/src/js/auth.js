@@ -28,7 +28,7 @@ async function handleResponse(response) {
 
     let remember_me = document.getElementById("remember").checked;
     setToken(json["token"], remember_me);
-    window.location.href = "/chat"; // Redirect to /chat
+    window.location.href = "/"; // Redirect to main page
 }
 
 function getUserInput() {

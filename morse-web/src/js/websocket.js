@@ -11,7 +11,7 @@ async function tryEstablishingWebsocket() {
     let token = getToken();
     if(token == null) {
         console.warn("Tried establishing websocket connection without being logged-in");
-        window.location.href = "/"; // TODO
+        window.location.href = "/login";
         return;
     }
     establishWebsocket(token);
