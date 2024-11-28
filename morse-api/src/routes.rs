@@ -36,7 +36,7 @@ pub fn get_routes(redis: RedisCon, mysql: MySqlPool, users: &Arc<UsersChannels>)
 // Endpoints
 
 fn websocket(redis: &RedisCon, users: &Arc<UsersChannels>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    warp::path!("stream")
+    warp::path!("chat")
         .and(with_users(users.clone()))
         .and(with_redis(redis.clone()))
         .and(warp::ws())

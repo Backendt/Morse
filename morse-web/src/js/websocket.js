@@ -1,10 +1,10 @@
-const WEBSOCKET_ENDPOINT = "/stream";
+const WEBSOCKET_ENDPOINT = "/chat";
 
 var api_socket = null;
 establishWebsocket();
 
 function getWebsocketUrl() {
-    return "ws://api." + window.location.host + "/stream";
+    return "ws://api." + window.location.host + WEBSOCKET_ENDPOINT;
 }
 
 async function establishWebsocket() {
@@ -35,9 +35,10 @@ function connectToWebsocket(token) {
         console.error("[ERROR] The connection with the websocket has been closed because of an error: ", event);
     };
 
-    api_socket.onclose = () => {
-        console.log("Disconnected from websocket");
+    api_socket.onclose = (event) => {
+        console.log("Disconnected from websocket for reason: '" + event.reason + "' and code: " + event.code);
         api_socket = null;
+        connectToWebsocket(token);
     };
 
     api_socket.onmessage = onWsMessage;
