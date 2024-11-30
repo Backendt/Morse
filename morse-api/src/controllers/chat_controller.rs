@@ -31,7 +31,7 @@ async fn authenticate_client(socket: &mut WebSocket) -> Option<String> {
             return Some(username);
         }
 
-        let response = Response::err("The given JWT is invalid or expired.");
+        let response = Response::err("invalid_auth", "The given JWT is invalid or expired.");
         let _ = socket.send(response.as_message()).await
             .inspect_err(|err| eprintln!("Could not send authentication error message to user. {err:?}"));
     }
@@ -43,7 +43,7 @@ async fn handle_user_connection(mut socket: WebSocket, environment: WsEnvironmen
     match ws_service::add_client(&environment.username, &environment.users_channels).await {
         Ok((user_sender, user_receiver)) => establish_chat(user_sender, user_receiver, socket, environment).await,
         Err(error_message) => {
-            let response = Response::err(&error_message);
+            let response = Response::err("duplicate_client", &error_message);
             let _ = socket.send(response.as_message()).await
                 .inspect_err(|err| eprintln!("Could not send error message to user. {err:?}"));
             let _ = socket.close().await
@@ -69,10 +69,13 @@ async fn receive_messages(mut receiver: SplitStream<WebSocket>, user_channel: Un
     while let Some(received) = receiver.next().await {
         let Ok(raw_message) = received else { break; };
 
-        match ws_service::parse_message(raw_message) {
+        match ws_service::parse_message(raw_message.clone()) {
             Ok(message) => on_request(message, user_channel.clone(), environment).await,
-            Err(_) => {
-                let response = Response::err("Could not parse message.");
+            Err(err) => {
+                //eprintln!("Error when parsing message: {err:?}"); // TODO Temporary
+                //eprintln!("Tried parsing message: {raw_message:?}");
+                //eprintln!("Message as bytes: {:?}", raw_message.as_bytes());
+                let response = Response::err("parse_error", "Could not parse message.");
                 let _ = user_channel.send(response.as_message())
                     .inspect_err(|err| eprintln!("Could not send parse error message to user. {err:?}"));
             }
@@ -84,7 +87,7 @@ async fn on_request(request: Request, user_channel: UnboundedSender<Message>, en
     let result = handle_request(&request, environment).await;
     let response = result.map_or_else(
         |error_message| handle_error(&request.action, error_message),
-        |response_message| Response::action_success(&request.action, &response_message)
+        |response_message| Response::success(&request.action.as_code(), &response_message)
     );
 
     let _ = user_channel.send(response.as_message())
@@ -112,5 +115,5 @@ fn handle_error(action: &Action, error: RequestError) -> Response {
         RequestError::InvalidRequest(err) => err
     };
 
-    Response::action_err(action, &message)
+    Response::err(&action.as_code(), &message)
 }

@@ -41,7 +41,7 @@ pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Re
 pub async fn register(raw_user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
     let user_request = raw_user_request.validated()?;
     user_service::register_user(&user_request, &database).await?;
-    let response = Response::success("User was created if it didn't already exist");
+    let response = Response::success("user_created", "User was created if it didn't already exist");
     Ok(with_status(json(&response), StatusCode::CREATED))
 }
 

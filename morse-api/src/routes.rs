@@ -1,5 +1,5 @@
 use warp::{
-    http::{header::AUTHORIZATION, StatusCode},
+    http::StatusCode,
     reply::{json, with_status},
     Filter, Reply,
     reject::Rejection,
@@ -104,14 +104,6 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
         message = bad_request.source().map_or_else(|| bad_request.to_string(), |source| source.to_string());
         status = StatusCode::BAD_REQUEST;
 
-    // Missing Authorization header
-    } else if let Some(missing_header) = err.find::<warp::reject::MissingHeader>() {
-        if missing_header.to_string().contains(AUTHORIZATION.as_str()) {
-            message = "You need authentication".to_owned();
-            status = StatusCode::UNAUTHORIZED;
-        } else {
-            return Err(err);
-        }
     // Request too large
     } else if let Some(_) = err.find::<warp::reject::PayloadTooLarge>() {
         message = "Your request is too big".to_owned();
@@ -120,7 +112,7 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
         return Err(err);
     }
 
-    let response = Response::err(&message);
+    let response = Response::err(&status.to_string(), &message);
     return Ok(with_status(json(&response), status));
 }
 

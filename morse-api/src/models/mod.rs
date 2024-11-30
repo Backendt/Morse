@@ -3,7 +3,6 @@ pub mod errors;
 pub mod ws;
 
 use serde::{self, Serialize};
-use crate::models::ws::Action;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -15,39 +14,22 @@ pub enum Status {
 #[derive(Debug, Serialize)]
 pub struct Response {
     status: Status,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    action: Option<Action>,
+    code: String,
     message: String
 }
 impl Response {
-    pub fn err(message: &str) -> Self {
+    pub fn err(error_code: &str, message: &str) -> Self {
         Self {
             status: Status::Error,
-            action: None,
+            code: error_code.to_owned(),
             message: message.to_owned()
         }
     }
 
-    pub fn action_err(action: &Action, message: &str) -> Self {
-        Self {
-            status: Status::Error,
-            action: Some(action.clone()),
-            message: message.to_owned()
-        }
-    }
-
-    pub fn action_success(action: &Action, message: &str) -> Self {
+    pub fn success(status_code: &str, message: &str) -> Self {
         Self {
             status: Status::Success,
-            action: Some(action.clone()),
-            message: message.to_owned()
-        }
-    }
-
-    pub fn success(message: &str) -> Self {
-        Self {
-            status: Status::Success,
-            action: None,
+            code: status_code.to_owned(),
             message: message.to_owned()
         }
     }

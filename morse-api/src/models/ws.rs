@@ -40,6 +40,17 @@ pub enum Action {
     Leave,
     Message,
 }
+impl Action {
+    pub fn as_code(&self) -> String {
+        match self {
+            Action::CreateRoom => "room_creation",
+            Action::Invite => "user_invitation",
+            Action::Join => "room_joining",
+            Action::Leave => "room_leaving",
+            Action::Message => "message_sending"
+        }.to_owned()
+    }
+}
 
 pub trait Messageable: Serialize {
     fn as_message(&self) -> Message {
