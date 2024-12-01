@@ -13,9 +13,10 @@ function postToApi(path, body) {
     });
 }
 
-async function handleResponse(response) {
+async function handleAuthResponse(response) {
     let json = await response.json();
-    if(isMessage(json)) {
+    let is_response = "status" in json;
+    if(is_response) {
         displayResponse(json);
         return;
     }
@@ -39,18 +40,18 @@ function getUserInput() {
 
 function submitLogin() {
     let user = getUserInput();
-    postToApi("/login", user).then(handleResponse);
+    postToApi("/login", user).then(handleAuthResponse);
 }
 
 function submitRegister() {
     let user = getUserInput();
-    postToApi("/register", user).then(handleResponse);
+    postToApi("/register", user).then(handleAuthResponse);
 }
 
 function anonymousLogin() {
     let user = getUserInput();
     let url = getApiUrl() + "/anonymous";
-    fetch(url).then(handleResponse);
+    fetch(url).then(handleAuthResponse);
 }
 
 function setupButtons() {
@@ -62,4 +63,6 @@ function setupButtons() {
     };
 }
 
-document.addEventListener("DOMContentLoaded", setupButtons);
+async function onAuthPageLoad() {
+    document.addEventListener("DOMContentLoaded", setupButtons);
+}

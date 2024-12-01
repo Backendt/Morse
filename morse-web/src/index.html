@@ -5,11 +5,21 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <script defer src="js/messages.js"></script>
+        <script defer src="js/notifications.js"></script>
         <script defer src="js/token.js"></script>
         <script defer src="js/websocket.js"></script>
+        <script defer src="js/rooms.js"></script>
+        <script defer onload="onPageLoad()" src="js/main.js"></script>
     </head>
     <body>
-        <h1>TODO</h1>
+        <header>
+            <p>Connected as <b id="my-name">...</b></p>
+        </header>
+        <main>
+            <div id="room">
+                <h2>You don't have any room.</h2>
+                <button onclick="createRoom()">Create room</button>
+            </div>
+        </main>
     </body>
 </html>

@@ -30,3 +30,8 @@ function getToken() {
     }
     return token;
 }
+
+function removeTokens() {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+}

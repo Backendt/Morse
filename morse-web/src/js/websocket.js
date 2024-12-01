@@ -1,7 +1,8 @@
 const WEBSOCKET_ENDPOINT = "/chat";
 const RECONNECTION_DELAY_SECONDS = 10;
 
-var api_socket = null;
+let api_socket = null;
+let message_handlers = []; // List of functions called to handle the websocket onMessage event
 establishWebsocket();
 
 function getWebsocketUrl() {
@@ -15,6 +16,7 @@ async function establishWebsocket() {
         window.location.href = "/login";
         return;
     }
+    addMessageHandler(handleAuthError)
     connectToWebsocket(token);
 }
 
@@ -44,16 +46,37 @@ function connectToWebsocket(token, is_retrying=false) {
             return;
         }
 
-        console.log("Disconnected from websocket for reason: '" + event.reason + "' and code: " + event.code);
+        console.log("Disconnected from websocket with code: " + event.code + " (reason: '" + event.reason + "')");
         connectToWebsocket(token, true);
     };
 
-    api_socket.onmessage = onWsMessage;
+    api_socket.onmessage = handleMessageEvent;
 }
 
-async function onWsMessage(event) {
-    // TODO
-    alert("Received from ws: " + event.data);
+async function handleMessageEvent(event) {
+    for(let handler of message_handlers) {
+        handler(event);
+    }
+}
+
+function addMessageHandler(handler) {
+    message_handlers.push(handler);
+} 
+
+function handleAuthError(event) {
+    let json = JSON.parse(event.data);
+    let error_code_key = "code";
+    if(!(error_code_key in json)) {
+        return;
+    }
+
+    let auth_error_code = "invalid_auth";
+    let is_auth_error = json[error_code_key] === auth_error_code;
+    if(is_auth_error) {
+        console.warn("Received an authentication error from API. Redirecting to login page.");
+        removeTokens();
+        window.location.href = "/login";
+    }
 }
 
 function sendWsMessage(message) {
