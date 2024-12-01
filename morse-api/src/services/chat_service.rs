@@ -48,7 +48,7 @@ pub async fn invite_in_room(target_username: &str, room_id: &str, environment: &
     return Ok("Invitation sent.".to_owned());
 }
 
-pub async fn join_room(room_id: &str, environment: &WsEnvironment) -> RequestResult<String> {
+pub async fn join_room(room_id: &str, environment: &WsEnvironment) -> RequestResult<String> { // TODO send join message to new user for all current users in room
     let username = &environment.username;
 
     let room_users = room_repository::get_users_in_room(room_id, environment.redis()).await

@@ -69,12 +69,13 @@ async fn receive_messages(mut receiver: SplitStream<WebSocket>, user_channel: Un
     while let Some(received) = receiver.next().await {
         let Ok(raw_message) = received else { break; };
 
+        // TODO Handle ping
         match ws_service::parse_message(raw_message.clone()) {
             Ok(message) => on_request(message, user_channel.clone(), environment).await,
             Err(err) => {
-                //eprintln!("Error when parsing message: {err:?}"); // TODO Temporary
-                //eprintln!("Tried parsing message: {raw_message:?}");
-                //eprintln!("Message as bytes: {:?}", raw_message.as_bytes());
+                eprintln!("Error when parsing message: {err:?}"); // TODO Temporary
+                eprintln!("Tried parsing message: {raw_message:?}");
+                eprintln!("Message as bytes: {:?}", raw_message.as_bytes());
                 let response = Response::err("parse_error", "Could not parse message.");
                 let _ = user_channel.send(response.as_message())
                     .inspect_err(|err| eprintln!("Could not send parse error message to user. {err:?}"));

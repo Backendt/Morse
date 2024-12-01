@@ -13,7 +13,7 @@ pub struct User {
     pub password: String,
 }
 impl User {
-    pub fn validated(self) -> Result<Self, RequestError> {
+    pub fn validated(self) -> Result<Self, RequestError> { // TODO Trim username
         let name_regex = Regex::new(USERNAME_REGEX).expect("Username regex is invalid");
         if !name_regex.is_match(&self.username) {
             return Err(InvalidRequest(USERNAME_ERROR.to_owned()));
