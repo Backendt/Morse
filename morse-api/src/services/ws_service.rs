@@ -7,10 +7,9 @@ use warp::ws::Message;
 use futures::SinkExt;
 use std::sync::Arc;
 
-use crate::models::ws::{
-    WsSink,
-    UsersChannels,
-    Request
+use crate::models::{
+    ws::{WsSink, UsersChannels},
+    api::Request
 };
 
 pub async fn add_client(username: &String, users: &Arc<UsersChannels>) -> Result<(UnboundedSender<Message>, UnboundedReceiver<Message>), String> {

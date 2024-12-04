@@ -1,6 +1,6 @@
 use warp::{
     Reply,
-    http::StatusCode,
+    http::StatusCode as HttpStatus,
     reply::{
         json,
         with_status
@@ -11,8 +11,10 @@ use sqlx::MySqlPool;
 use crate::{
     controllers::WebResult,
     models::{
-        auth::{User, JwtResponse},
-        Response,
+        api::ApiMessage,
+        api::status::*,
+        api::auth::*,
+        auth::User,
         errors::RequestError::*
     },
     services::{user_service, jwt_service}
@@ -29,8 +31,9 @@ pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Re
     let username = &user_request.username;
     match jwt_service::create_jwt(username) {
         Ok(token) => {
-            let response = JwtResponse { username: username.to_owned(), token };
-            Ok(with_status(json(&response), StatusCode::OK))
+            let body = TokenBody { username: username.to_owned(), token };
+            let response = ApiMessage::new(body);
+            Ok(with_status(json(&response), HttpStatus::OK))
         },
         Err(err) => InternalError(
             format!("Could not create jwt for user. {err:?}")
@@ -41,8 +44,13 @@ pub async fn login(user_request: User, database: MySqlPool) -> WebResult<impl Re
 pub async fn register(raw_user_request: User, database: MySqlPool) -> WebResult<impl Reply> {
     let user_request = raw_user_request.validated()?;
     user_service::register_user(&user_request, &database).await?;
-    let response = Response::success("user_created", "User was created if it didn't already exist");
-    Ok(with_status(json(&response), StatusCode::CREATED))
+    let body = StatusBody {
+        success: true,
+        status_code: StatusCode::Registration,
+        message: "User was created if it didn't already exist".to_owned()
+    };
+    let response = ApiMessage::new(body);
+    Ok(with_status(json(&response), HttpStatus::CREATED))
 }
 
 pub async fn anonymous_login() -> WebResult<impl Reply> {
@@ -51,8 +59,9 @@ pub async fn anonymous_login() -> WebResult<impl Reply> {
     
     match jwt_service::create_jwt(&username) {
         Ok(token) => {
-            let response = JwtResponse { username, token };
-            Ok(with_status(json(&response), StatusCode::OK))
+            let body = TokenBody { username, token };
+            let response = ApiMessage::new(body);
+            Ok(with_status(json(&response), HttpStatus::OK))
         },
         Err(err) => InternalError(
             format!("Could not create anonymous jwt. {err:?}")

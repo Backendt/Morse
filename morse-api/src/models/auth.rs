@@ -30,12 +30,6 @@ impl User {
     }
 }
 
-#[derive(Serialize)]
-pub struct JwtResponse {
-    pub username: String,
-    pub token: String
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct JwtClaims {
     pub exp: usize, // Expiration timestamp

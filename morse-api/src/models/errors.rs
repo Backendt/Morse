@@ -1,8 +1,8 @@
 use warp::{
     reject::Reject,
     Rejection,
-    http::StatusCode
 };
+use super::api::status::StatusCode;
 
 pub type RequestResult<T> = Result<T, RequestError>;
 
@@ -18,10 +18,10 @@ impl <T>Into<Result<T, Rejection>> for RequestError {
     }
 }
 impl RequestError {
-    pub fn status_code(&self) -> StatusCode {
+    pub fn status_code(&self) -> StatusCode { // TODO Refactor
         match self {
-            RequestError::InvalidRequest(_) => StatusCode::BAD_REQUEST,
-            RequestError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR
+            RequestError::InvalidRequest(_) => StatusCode::InvalidRequest,
+            RequestError::InternalError(_) => StatusCode::InternalError
         }
     }
 }

@@ -1,5 +1,5 @@
 use warp::{
-    http::StatusCode,
+    http::StatusCode as HttpStatus,
     reply::{json, with_status},
     Filter, Reply,
     reject::Rejection,
@@ -15,7 +15,8 @@ use sqlx::MySqlPool;
 use super::{
     controllers::*,
     models::{
-        Response,
+        api::ApiMessage,
+        api::status::*,
         ws::UsersChannels,
         errors::RequestError::{self, *}
     },
@@ -102,18 +103,23 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     // Deserialization Error
     } else if let Some(bad_request) = err.find::<warp::filters::body::BodyDeserializeError>() {
         message = bad_request.source().map_or_else(|| bad_request.to_string(), |source| source.to_string());
-        status = StatusCode::BAD_REQUEST;
-
+        status = StatusCode::InvalidRequest;
     // Request too large
     } else if let Some(_) = err.find::<warp::reject::PayloadTooLarge>() {
         message = "Your request is too big".to_owned();
-        status = StatusCode::PAYLOAD_TOO_LARGE;
+        status = StatusCode::InvalidRequest;
     } else {
         return Err(err);
     }
 
-    let response = Response::err(&status.to_string(), &message);
-    return Ok(with_status(json(&response), status));
+    let body = StatusBody {
+        success: false,
+        status_code: status,
+        message
+    };
+
+    let response = ApiMessage::new(body);
+    return Ok(with_status(json(&response), HttpStatus::OK));
 }
 
 fn handle_custom_rejection(rejection: &RequestError) -> (String, StatusCode) {

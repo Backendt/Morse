@@ -7,24 +7,29 @@ use crate::{
         RequestResult,
         RequestError::{InternalError, InvalidRequest}
     },
-    models::ws::{
-        Action,
-        Request,
-        UsersChannels,
-        ChatMessage,
-        Messageable,
-        WsEnvironment
+    models::ws::{UsersChannels, WsEnvironment},
+    models::api::{
+        MessageBody,
+        chat::ChatMessage,
+        status::*,
+        room::*,
+        user::*
     },
     database::RedisCon
 };
 
-pub async fn create_room(username: &str, redis: RedisCon) -> RequestResult<String> {
+pub async fn create_room(username: &str, redis: RedisCon) -> RequestResult<RoomBody> {
     room_repository::create_room(username, redis).await
-        .map(|room_id| room_id.to_string())
         .map_err(|err| InternalError(format!("Could not create room. {err:?}")))
+        .map(|room_id| RoomBody {
+            event: RoomEvent::Join,
+            event_user: username.to_owned(),
+            room: room_id,
+            users: vec![username.to_owned()]
+        })
 }
 
-pub async fn invite_in_room(target_username: &str, room_id: &str, environment: &WsEnvironment) -> RequestResult<String> {
+pub async fn invite_in_room(target_username: &str, room_id: &str, environment: &WsEnvironment) -> RequestResult<StatusBody> {
     let username = &environment.username;
     if *username == *target_username {
         return Err(InvalidRequest("Cannot invite yourself".to_owned()));
@@ -36,19 +41,24 @@ pub async fn invite_in_room(target_username: &str, room_id: &str, environment: &
 
     let user_channels = environment.users_channels.read().await;
     if let Some(target) = user_channels.get(target_username) {
-        let request = Request::new(
-            Action::Invite,
-            target_username.to_owned(),
-            room_id.to_owned()
-        );
-        let _ = target.send(request.as_message())
+        let body = UserBody {
+            r#type: UserRequestType::Invite,
+            from: username.to_owned(),
+            content: room_id.to_owned()
+        };
+        let _ = target.send(body.as_message())
             .map_err(|err| InternalError(format!("Could not send invitation: {err:?}")))?;
     };
 
-    return Ok("Invitation sent.".to_owned());
+    let response = StatusBody {
+        success: true,
+        status_code: StatusCode::Invitation,
+        message: "Invitation sent.".to_owned()
+    };
+    Ok(response)
 }
 
-pub async fn join_room(room_id: &str, environment: &WsEnvironment) -> RequestResult<String> { // TODO send join message to new user for all current users in room
+pub async fn join_room(room_id: &str, environment: &WsEnvironment) -> RequestResult<RoomBody> {
     let username = &environment.username;
 
     let room_users = room_repository::get_users_in_room(room_id, environment.redis()).await
@@ -63,32 +73,42 @@ pub async fn join_room(room_id: &str, environment: &WsEnvironment) -> RequestRes
         return Err(InvalidRequest("The room does not exist.".to_owned()));
     }
 
-    let request = Request::new(
-        Action::Join,
-        room_id.to_owned(),
-        username.to_owned()
-    );
-    let _ = send_to_users(request, room_users, &environment.users_channels).await
+    let mut new_room_users = room_users.clone();
+    new_room_users.push(username.to_owned());
+
+    let request = RoomBody {
+        event: RoomEvent::Join,
+        event_user: username.to_owned(),
+        room: room_id.to_owned(),
+        users: new_room_users
+    };
+    let _ = send_to_users(request.clone(), room_users, &environment.users_channels).await
         .inspect_err(|err| eprintln!("Could not send join message to users in room. {err:?}"));
-    Ok("You joined the room".to_owned())
+    
+    Ok(request)
 }
 
-pub async fn leave_room(room_id: &str, environment: &WsEnvironment) -> RequestResult<String> {
-    let was_removed = room_repository::remove_user(&environment.username, room_id, environment.redis()).await
+pub async fn leave_room(room_id: &str, environment: &WsEnvironment) -> RequestResult<RoomBody> {
+    let username = &environment.username;
+    let was_removed = room_repository::remove_user(username, room_id, environment.redis()).await
         .map_err(|err| InternalError(format!("Could not leave room. {err:?}")))?;
     if !was_removed {
         return Err(InvalidRequest("You are not in the given room.".to_owned()));
     }
+    let new_room_users = room_repository::get_users_in_room(room_id, environment.redis()).await
+        .map_err(|err| InternalError(format!("Could not get users in room. {err:?}")))?;
 
-    let request = Request::new(
-        Action::Leave,
-        room_id.to_owned(),
-        environment.username.to_owned()
-    );
+    let request = RoomBody {
+        event: RoomEvent::Leave,
+        event_user: username.to_owned(),
+        room: room_id.to_owned(),
+        users: new_room_users.clone()
+    };
 
-    let _ = send_to_room(request, room_id, &environment.users_channels, environment.redis()).await
+    let _ = send_to_users(request.clone(), new_room_users, &environment.users_channels).await
         .inspect_err(|errs| eprintln!("Could not send leave message to everyone in room. {errs:?}"));
-    Ok("You left the room.".to_owned())
+
+    Ok(request)
 }
 
 pub async fn leave_all(environment: &WsEnvironment) -> RequestResult<()> {
@@ -110,20 +130,19 @@ pub async fn leave_all(environment: &WsEnvironment) -> RequestResult<()> {
     Ok(())
 }
 
-pub async fn send_message(room_id: &str, message: &str, environment: &WsEnvironment) -> RequestResult<String> {
-    let room_users = get_usernames_in_same_room(&environment.username, room_id, environment.redis()).await?;
+pub async fn send_message(room_id: &str, message: &str, environment: &WsEnvironment) -> RequestResult<()> {
+    let username = &environment.username;
+    let room_users = get_usernames_in_same_room(username, room_id, environment.redis()).await?;
 
     let request = ChatMessage {
-        sender: environment.username.to_owned(),
+        sender: username.to_owned(),
         room: room_id.to_owned(),
         content: message.to_owned()
     };
 
     send_to_users(request, room_users, &environment.users_channels).await
-        .map(|_| "Message has been sent".to_owned())
-        .or_else(|err| {
+        .inspect_err(|err| {
             eprintln!("Could not send chat message to users in room. {err:?}");
-            Ok("Message has been sent, but one or multiple users might have not received it".to_owned())
         })
 }
 
@@ -136,19 +155,13 @@ async fn get_usernames_in_same_room(username: &str, room_id: &str, redis: RedisC
     Ok(room_users)
 }
 
-async fn send_to_room(request: Request, room_id: &str, channels: &Arc<UsersChannels>, redis: RedisCon) -> RequestResult<()> {
-    let room_users = room_repository::get_users_in_room(room_id, redis).await
-        .map_err(|err| InternalError(format!("Could not get users in room to send them a request. {err:?}")))?;
-    
-    send_to_users(request, room_users, channels).await
-}
-
-async fn send_to_users(request: impl Messageable, room_users: Vec<String>, channels: &Arc<UsersChannels>) -> RequestResult<()> {
+async fn send_to_users(body: impl MessageBody, room_users: Vec<String>, channels: &Arc<UsersChannels>) -> RequestResult<()> {
+    let request = body.as_message();
     let mut errors = Vec::with_capacity(room_users.len());
     let users_channels = channels.read().await;
     for room_user in room_users.iter() {
         if let Some(user_channel) = users_channels.get(room_user) {
-            if let Err(err) = user_channel.send(request.as_message()) {
+            if let Err(err) = user_channel.send(request.clone()) {
                 errors.push(err);
             }
         }
