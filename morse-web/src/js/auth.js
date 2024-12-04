@@ -14,22 +14,22 @@ function postToApi(path, body) {
 }
 
 async function handleAuthResponse(response) {
-    let json = await response.json();
-    let is_response = "status" in json;
-    if(is_response) {
-        displayResponse(json);
+    let message = await response.json();
+    let type = message.type;
+    if(!type) {
+        console.warn(`Received unexpected json as authentication response: ${JSON.stringify(message)}`);
         return;
     }
-
-    let is_token = "token" in json;
-    if(!is_token) {
-        console.error("[ERROR] Received unexpected response for API");
-        return;
+    
+    if(type == "token") {
+        let remember_me = document.getElementById("remember").checked;
+        setToken(message.body.token, remember_me);
+        window.location.href = "/"; // Redirect to main page
+    } else if(type === "status") {
+        displayStatus(message.body);
+    } else {
+        console.error(`Received unexpected message for authentication response. ${JSON.stringify(message)}`);
     }
-
-    let remember_me = document.getElementById("remember").checked;
-    setToken(json["token"], remember_me);
-    window.location.href = "/"; // Redirect to main page
 }
 
 function getUserInput() {
@@ -49,7 +49,6 @@ function submitRegister() {
 }
 
 function anonymousLogin() {
-    let user = getUserInput();
     let url = getApiUrl() + "/anonymous";
     fetch(url).then(handleAuthResponse);
 }

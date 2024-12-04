@@ -2,8 +2,7 @@ const WEBSOCKET_ENDPOINT = "/chat";
 const RECONNECTION_DELAY_SECONDS = 10;
 
 let api_socket = null;
-let message_handlers = []; // List of functions called to handle the websocket onMessage event
-establishWebsocket();
+let message_handlers = new Map(); // Response type -> Handler function list
 
 function getWebsocketUrl() {
     return "ws://api." + window.location.host + WEBSOCKET_ENDPOINT;
@@ -16,13 +15,13 @@ async function establishWebsocket() {
         window.location.href = "/login";
         return;
     }
-    addMessageHandler(handleAuthError)
+    addMessageHandler("status", handleAuthError)
     connectToWebsocket(token);
 }
 
 function connectToWebsocket(token, is_retrying=false) {
     if(api_socket != null) {
-        console.error("[ERROR] Tried connecting to websocket multiple times");
+        console.error("Tried connecting to websocket multiple times");
         return;
     };
 
@@ -36,7 +35,7 @@ function connectToWebsocket(token, is_retrying=false) {
     };
 
     api_socket.onerror = (event) => {
-        console.error("[ERROR] The connection with the websocket has been closed because of an error: ", event);
+        console.error("The connection with the websocket has been closed because of an error: ", event);
     };
 
     api_socket.onclose = (event) => {
@@ -54,24 +53,34 @@ function connectToWebsocket(token, is_retrying=false) {
 }
 
 async function handleMessageEvent(event) {
-    for(let handler of message_handlers) {
-        handler(event);
-    }
-}
-
-function addMessageHandler(handler) {
-    message_handlers.push(handler);
-} 
-
-function handleAuthError(event) {
-    let json = JSON.parse(event.data);
-    let error_code_key = "code";
-    if(!(error_code_key in json)) {
+    let message = {};
+    try {
+        message = JSON.parse(event.data);
+    } catch {} // Ignore the parse error
+    let type = message.type;
+    if(!type) {
+        console.warn(`Received unknown message from api: ${event.data}`);
         return;
     }
 
-    let auth_error_code = "invalid_auth";
-    let is_auth_error = json[error_code_key] === auth_error_code;
+    let handlers = message_handlers.get(type) || [];
+    if(handlers.length == 0) {
+        console.warn(`No handler found for message of type ${type}. Message: ${event.data}`);
+        return;
+    }
+
+    handlers.forEach(handler => handler(message.body));
+}
+
+function addMessageHandler(response_type, handler) {
+    let handlers = message_handlers.get(response_type) || [];
+    handlers.push(handler);
+    message_handlers.set(response_type, handlers);
+} 
+
+function handleAuthError(status) {
+    let auth_status_code = "invalid_token";
+    let is_auth_error = status.status_code === auth_status_code;
     if(is_auth_error) {
         console.warn("Received an authentication error from API. Redirecting to login page.");
         removeTokens();
@@ -81,14 +90,50 @@ function handleAuthError(event) {
 
 function sendWsMessage(message) {
     if(api_socket == null) {
-        console.error("[ERROR] Tried sending websocket message before establishing connection.");
+        console.error("Tried sending websocket message before establishing connection.");
         return;
     }
     if(api_socket.readyState != WebSocket.OPEN) {
-        console.error("[ERROR] Tried sending websocket message but connection isn't open. Current status: ", api_socket.readyState);
+        console.error("Tried sending websocket message but connection isn't open. Current status: ", api_socket.readyState);
         return;
     }
 
     let json = JSON.stringify(message);
     api_socket.send(json);
+}
+
+async function leaveRoom(room_id) {
+    sendWsMessage({
+        action: "leave",
+        target: room_id
+    });
+}
+
+async function createRoom() {
+    sendWsMessage({
+        action: "create_room"
+    });
+}
+
+async function joinRoom(room_id) {
+    sendWsMessage({
+        action: "join",
+        target: room_id
+    });
+}
+
+async function inviteToRoom(room_id, username) {
+    sendWsMessage({
+        action: "invite",
+        target: username,
+        body: room_id
+    });
+}
+
+async function sendMessage(room_id, message) {
+    sendWsMessage({
+        action: "message",
+        target: room_id,
+        body: message.trim()
+    });
 }

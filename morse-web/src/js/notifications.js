@@ -5,14 +5,12 @@ function notify(response) {
     alert(response.message);
 }
 
-function displayResponse(response) {
-    let status_code = response.code;
+function displayStatus(response) {
+    let status_code = response.status_code;
     if(status_code in SUPRESSED_ERROR_CODES) {
         console.log(`Received response for suppressed error message '${status_code}': ${response.message}`);
         return;
     }
 
-    if(response.status === "error") {
-        notify(response);
-    }
+    notify(response);
 }

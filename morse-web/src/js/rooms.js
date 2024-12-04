@@ -1,26 +1,6 @@
 let current_room = null;
 const rooms = new Map();
 
-async function leaveRoom(room_id) {
-    sendWsMessage({
-        action: "leave",
-        target: room_id
-    });
-}
-
-async function createRoom() {
-    sendWsMessage({
-        action: "create_room"
-    });
-}
-
-async function joinRoom(room_id) {
-    sendWsMessage({
-        action: "join",
-        target: room_id
-    });
-}
-
 async function displayRoom(room_id) {
     current_room = room_id;
     let room_users = getUsersInRoom(room_id);
@@ -29,11 +9,6 @@ async function displayRoom(room_id) {
     // TODO
     let all_users = "Users in room: " + room_users.join(", ");
     room.innerText = all_users;
-}
-
-function onCreatedRoom(room_id) {
-    addUserToRoom(getUsername(), room_id);
-    displayRoom(room_id);
 }
 
 function getRooms() {
@@ -48,22 +23,21 @@ function getUsersInRoom(room_id) {
     return rooms.get(room_id) || [];
 }
 
-function addUserToRoom(username, room_id) {
-    let room_users = getUsersInRoom(room_id);
-    room_users.push(username);
-    rooms.set(room_id, room_users);
-    // Update display if its currently displayed
-    if(room_id === current_room) {
-        displayRoom(room_id);
+function setUsersInRoom(room_id, users) {
+    if(users.length == 0) { // Delete room if empty
+        rooms.delete(room_id);
+    } else {
+        rooms.set(room_id, users); 
     }
 }
 
-function removeUserFromRoom(username, room_id) {
-    let room_users = getUsersInRoom(room_id);
-    let new_room_users = room_users.filter(name => name !== username);
-    rooms.set(room_id, new_room_users);
-    // Update display if its currently displayed
-    if(room_id === current_room) {
-        displayRoom(room_id);
+function onRoomMessage(message) {
+    let room = message.room;
+    let event_verb = message.event === "leave" ? "left" : "joined";
+    console.info(`${message.event_user} ${event_verb} the room ${room}`);
+
+    setUsersInRoom(room, message.users);
+    if(!current_room || room === current_room) {
+        displayRoom(room);
     }
 }
