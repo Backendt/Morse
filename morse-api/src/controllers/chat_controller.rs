@@ -77,7 +77,7 @@ async fn receive_messages(mut receiver: SplitStream<WebSocket>, sender: Unbounde
                 eprintln!("Message as bytes: {:?}", raw_message.as_bytes());
                 send_response(&sender, StatusBody {
                     success: false,
-                    status_code: StatusCode::InvalidRequest,
+                    status_code: StatusCode::ParseError,
                     message: err.to_string()
                 }.as_message());
             }

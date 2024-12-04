@@ -20,6 +20,7 @@ pub enum StatusCode {
     InvalidToken,
     AlreadyConnected,
     InvalidRequest,
+    ParseError,
     InternalError,
     Invitation,
     Registration
