@@ -1,26 +1,17 @@
-function handleChatMessage(message) {
-    // TODO
-    alert(`[${message.sender}@${message.room}]: ${message.content}`);
-}
-
-function handleRequest(request) {
-    switch(request.action) {
-        case "invite": // Invitation received
-            // TODO
-            alert(`Invited to room: ${request.body}`);
-            break;
-        case "join": // User joined room
-            addUserToRoom(request.body, request.target);
-            break;
-        case "leave": // User left room
-            removeUserFromRoom(request.body, request.target);
-            break;
-    }
-}
-
 function displayUsername() {
-    let nameElement = document.getElementById("my-name");
-    nameElement.innerText = getUsername();
+    let element = document.getElementById("my-name");
+    element.innerText = getUsername();
+}
+
+async function toggleSidebar() {
+    let sidebar = document.getElementsByTagName("nav")[0];
+    let display_class = "nav-open";
+    let is_displayed = sidebar.classList.contains(display_class);
+    if(is_displayed) {
+        sidebar.classList.remove(display_class);
+    } else {
+        sidebar.classList.add(display_class);
+    }
 }
 
 async function onPageLoad() {

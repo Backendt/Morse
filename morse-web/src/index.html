@@ -5,16 +5,28 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="css/navbar.css">
         <script defer src="js/notifications.js"></script>
         <script defer src="js/token.js"></script>
         <script defer onload="establishWebsocket()" src="js/websocket.js"></script>
         <script defer src="js/rooms.js"></script>
+        <script defer src="js/messages.js"></script>
         <script defer onload="onPageLoad()" src="js/main.js"></script>
     </head>
     <body>
-        <header>
+        <header style="display: flex; justify-content: space-between;">
+            <button style="position: relative; z-index: 2" onclick="toggleSidebar()">≡</button>
             <p>Connected as <b id="my-name">...</b></p>
         </header>
+        <nav>
+            <p>Rooms:</p>
+            <div style="display: flex; justify-content: space-between; flex-direction: column;">
+                <div id="room-list">
+                    <p>You don't have any room.</p>
+                </div>
+                <button onclick="createRoom()">Create room</button>
+            </div>
+        </nav>
         <main>
             <div id="room">
                 <h2>You don't have any room.</h2>
