@@ -20,5 +20,11 @@ nav {
 @media only screen and (min-width: 700px) {
     .nav-open {
         width: 300px;
+        border-right-style: ridge;
     }
+}
+
+#room-list {
+    display: flex;
+    flex-direction: column;
 }

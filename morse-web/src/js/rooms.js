@@ -1,11 +1,10 @@
 let current_room = null;
-const rooms = new Map(); // room_id -> users
+const ROOMS = new Map(); // room_id -> users
 
-async function displayRoom(room_id) {
+async function displayRoom(room_id) { // TODO Move out of rooms.js?
     current_room = room_id;
     let room_users = getUsersInRoom(room_id);
     let room = document.getElementById("room");
-    let room_list = document.getElementById("room-list");
 
     // TODO
     let all_users = "Users in room: " + room_users.join(", ");
@@ -13,7 +12,7 @@ async function displayRoom(room_id) {
 }
 
 function getRooms() {
-    return rooms.keys();
+    return ROOMS.keys();
 }
 
 function getCurrentRoom() {
@@ -21,14 +20,14 @@ function getCurrentRoom() {
 }
 
 function getUsersInRoom(room_id) {
-    return rooms.get(room_id) || [];
+    return ROOMS.get(room_id) || [];
 }
 
 function setUsersInRoom(room_id, users) {
     if(users.length == 0) { // Delete room if empty
-        rooms.delete(room_id);
+        ROOMS.delete(room_id);
     } else {
-        rooms.set(room_id, users); 
+        ROOMS.set(room_id, users); 
     }
 }
 
@@ -37,6 +36,7 @@ function onRoomMessage(message) {
 
     let event_verb = message.event === "leave" ? "left" : "joined";
     console.info(`${message.event_user} ${event_verb} the room ${room}`);
+    
     setUsersInRoom(room, message.users);
     if(!current_room || room === current_room) {
         displayRoom(room);

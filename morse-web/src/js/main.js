@@ -3,18 +3,12 @@ function displayUsername() {
     element.innerText = getUsername();
 }
 
-async function toggleSidebar() {
-    let sidebar = document.getElementsByTagName("nav")[0];
-    let display_class = "nav-open";
-    let is_displayed = sidebar.classList.contains(display_class);
-    if(is_displayed) {
-        sidebar.classList.remove(display_class);
-    } else {
-        sidebar.classList.add(display_class);
-    }
-}
-
 async function onPageLoad() {
-    addMessageHandler("room", onRoomMessage);
+    addMessageHandler("room", async event => {
+        onRoomMessage(event);
+        let room_list = getRooms();
+        fillSidebar(room_list);
+    });
+    
     document.addEventListener("DOMContentLoaded", displayUsername);
 }
