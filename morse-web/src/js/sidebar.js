@@ -12,7 +12,7 @@ async function fillSidebar(room_list) {
     for(let room_id of room_list) {
         let room_button = document.createElement("button");
         room_button.innerText = room_id;
-        room_button.onclick = () => displayRoom(room_id); // TODO Decouple ?
+        room_button.onclick = () => {displayRoom(room_id); toggleSidebar()}; // TODO Decouple ?
         rooms_element.appendChild(room_button);
     }
 }

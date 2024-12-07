@@ -24,12 +24,16 @@
                 <div id="room-list">
                     <p>You don't have any room.</p>
                 </div>
-                <button onclick="createRoom()">Create room</button>
+                <button onclick="createRoom(); toggleSidebar()">Create room</button>
             </div>
         </nav>
         <main>
-            <div id="room">
-                <h2>You don't have any room.</h2>
+            <div id="room" hidden>
+                <h2>Room: <b id="room-name"></b></h2>
+                <h4>Users: <p id="room-users"></p></h4>
+            </div>
+            <div id="no-room">
+                <h1>You're not in a chat room.</h1>
                 <button onclick="createRoom()">Create room</button>
             </div>
         </main>
