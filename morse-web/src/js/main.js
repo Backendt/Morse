@@ -13,12 +13,28 @@ async function updateRoomDisplay(room_list) {
     ROOM_ELEMENT.hidden = has_no_room;
 }
 
+async function onMessageSubmit(event) {
+    event.preventDefault();
+    let message_element = document.getElementById("message-input");
+    let message = message_element.value;
+    if(!message || message.trim().length == 0) {
+        return;
+    }
+    sendMessage(current_room, message);
+    message_element.value = '';
+}
+
 async function onPageLoad() {
     addMessageHandler("room", async event => {
         onRoomMessage(event);
         let room_list = getRooms();
         updateRoomDisplay(room_list);
     });
+    addMessageHandler("chat", async event => {
+        let added_message = onChatMessage(event);
+        addMessageToDisplay(added_message);
+    });
 
     document.addEventListener("DOMContentLoaded", displayUsername);
+    document.getElementById("message-form").onsubmit = onMessageSubmit;
 }

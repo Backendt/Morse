@@ -11,6 +11,7 @@
         <script defer onload="establishWebsocket()" src="js/websocket.js"></script>
         <script defer src="js/rooms.js"></script>
         <script defer src="js/sidebar.js"></script>
+        <script defer src="js/messages.js"></script>
         <script defer onload="onPageLoad()" src="js/main.js"></script>
     </head>
     <body>
@@ -29,8 +30,15 @@
         </nav>
         <main>
             <div id="room" hidden>
-                <h2>Room: <b id="room-name"></b></h2>
-                <h4>Users: <p id="room-users"></p></h4>
+                <p>Room: <span id="room-name"></span></p>
+                <p>Users: <span id="room-users"></span></p>
+                <div id="chat">
+                    <div id="messages"></div>
+                    <form id="message-form" style="display: flex">
+                        <input id="message-input" type="text" placeholder="Send in chat...">
+                        <input type="submit">
+                    </form>
+                </div>
             </div>
             <div id="no-room">
                 <h1>You're not in a chat room.</h1>
