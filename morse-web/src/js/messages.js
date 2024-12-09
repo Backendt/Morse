@@ -1,4 +1,3 @@
-const MESSAGE_LIST_ELEMENT = document.getElementById("messages");
 let room_messages = new Map();
 
 function getRoomMessages(room_id) {
@@ -22,14 +21,3 @@ function onChatMessage(message) {
     return stored_message;
 }
 
-async function addMessageToDisplay(message) {
-    let message_element = document.createElement("p");
-    message_element.innerText = `${message.sender}: ${message.content}`;
-    MESSAGE_LIST_ELEMENT.appendChild(message_element);
-}
-
-function updateMessageDisplay(message_list) {
-    for(let message of message_list) {
-        addMessageToDisplay(message);
-    }
-}
