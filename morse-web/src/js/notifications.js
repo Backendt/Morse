@@ -14,3 +14,14 @@ function displayStatus(response) {
 
     notify(response);
 }
+
+function notifySuccess(message) {
+    notify({
+        success: true,
+        message
+    });
+}
+
+function popup(message) {
+    alert(message);
+}

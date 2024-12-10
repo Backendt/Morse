@@ -47,6 +47,25 @@ function displayRoomMessages(room_id) {
     }
 }
 
+
+async function copyRoomLink() {
+    let proto = window.location.protocol;
+    let host = window.location.host;
+    let invite_link = `${proto}//${host}/#${current_room}`;
+
+    let copiedSuccessfully = false;
+    if(navigator.clipboard) { // TODO Not tested
+        copiedSuccessfully = await navigator.clipboard.writeText(invite_link)
+            .then(() => true, () => false);
+    }
+
+    if(copiedSuccessfully) {
+        notifySuccess("Copied link to clipboard !");
+    } else {
+        popup(`Link: ${invite_link}`);
+    }
+}
+
 async function onMessageSubmit(event) {
     event.preventDefault();
     let message = MESSAGE_INPUT_ELEMENT.value;
@@ -87,6 +106,8 @@ async function registerMessageHandlers() {
 async function onPageLoad() {
     registerMessageHandlers();
     establishWebsocket().then(joinRoomInUrlHash);
+    window.addEventListener("hashchange", joinRoomInUrlHash);
+
     document.addEventListener("DOMContentLoaded", displayUsername);
     document.getElementById("message-form").onsubmit = onMessageSubmit;
 }
