@@ -57,6 +57,15 @@ async function onMessageSubmit(event) {
     }
 }
 
+function joinRoomInUrlHash() {
+    let hash = window.location.hash;
+    if(hash) {
+        let room_id = hash.substring(1); // Removes the hash character (#)
+        joinRoom(room_id);
+        window.location.hash = ''; // Removes the hash from the url
+    }
+}
+
 async function registerMessageHandlers() {
     addMessageHandler("room", async room_message => {
         let room = room_message.room;
@@ -77,7 +86,7 @@ async function registerMessageHandlers() {
 
 async function onPageLoad() {
     registerMessageHandlers();
-    establishWebsocket();
+    establishWebsocket().then(joinRoomInUrlHash);
     document.addEventListener("DOMContentLoaded", displayUsername);
     document.getElementById("message-form").onsubmit = onMessageSubmit;
 }

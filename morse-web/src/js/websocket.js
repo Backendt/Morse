@@ -3,6 +3,7 @@ const RECONNECTION_DELAY_SECONDS = 10;
 
 let api_socket = null;
 let message_handlers = new Map(); // Response type -> Handler function list
+let message_queue = []; // Messages that tried to be sent when websocket wasn't established
 
 function getWebsocketUrl() {
     return "ws://api." + window.location.host + WEBSOCKET_ENDPOINT;
@@ -12,7 +13,7 @@ async function establishWebsocket() {
     let token = getToken();
     if(token == null) {
         console.warn("Tried establishing websocket connection without being logged-in");
-        window.location.href = "/login";
+        window.location.href = "/login" + window.location.hash;
         return;
     }
     addMessageHandler("status", handleAuthError)
@@ -32,6 +33,12 @@ function connectToWebsocket(token, is_retrying=false) {
         is_retrying = false;
         console.log("Connected to websocket.");
         api_socket.send(token);
+
+        let queue = Array.from(message_queue);
+        message_queue = [];
+        for(let message of queue) {
+            sendWsMessage(message);
+        }
     };
 
     api_socket.onerror = (event) => {
@@ -84,17 +91,13 @@ function handleAuthError(status) {
     if(is_auth_error) {
         console.warn("Received an authentication error from API. Redirecting to login page.");
         removeTokens();
-        window.location.href = "/login";
+        window.location.href = "/login" + window.location.hash;
     }
 }
 
 function sendWsMessage(message) {
-    if(api_socket == null) {
-        console.error("Tried sending websocket message before establishing connection.");
-        return;
-    }
-    if(api_socket.readyState != WebSocket.OPEN) {
-        console.error("Tried sending websocket message but connection isn't open. Current status: ", api_socket.readyState);
+    if(!api_socket || api_socket.readyState != WebSocket.OPEN) {
+        message_queue.push(message);
         return;
     }
 

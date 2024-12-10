@@ -24,7 +24,7 @@ async function handleAuthResponse(response) {
     if(type == "token") {
         let remember_me = document.getElementById("remember").checked;
         setToken(message.body.token, remember_me);
-        window.location.href = "/"; // Redirect to main page
+        window.location.href = "/" + window.location.hash; // Redirect to main page
     } else if(type === "status") {
         displayStatus(message.body);
     } else {
