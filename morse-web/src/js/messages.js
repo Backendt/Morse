@@ -1,11 +1,11 @@
-let room_messages = new Map();
+const MESSAGES = new Map(); // room_id -> messages
 
 function getRoomMessages(room_id) {
-    return room_messages.get(room_id) || [];
+    return MESSAGES.get(room_id) || [];
 }
 
-function removeRoomMessages(room_id) {
-    room_messages.delete(room_id);
+function removeRoomMessages(room_id) { // TODO Use on room deletion
+    MESSAGES.delete(room_id);
 }
 
 function onChatMessage(message) {
@@ -17,7 +17,7 @@ function onChatMessage(message) {
     };
     let messages = getRoomMessages(room);
     messages.push(stored_message);
-    room_messages.set(room, messages);
+    MESSAGES.set(room, messages);
     return stored_message;
 }
 
