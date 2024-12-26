@@ -62,13 +62,13 @@ async fn establish_chat(user_sender: UnboundedSender<Message>, user_receiver: Un
     ws_service::remove_client(&environment.username, &environment.users_channels).await;
     let _ = chat_service::leave_all(&environment).await
         .inspect_err(|err| eprintln!("Could not leave all rooms when disconnecting. {err:?}"));
+    // TODO drop(sender) to stop forwarding task?
 }
 
 async fn receive_messages(mut receiver: SplitStream<WebSocket>, sender: UnboundedSender<Message>, environment: &WsEnvironment) {
     while let Some(received) = receiver.next().await {
         let Ok(raw_message) = received else { break; };
 
-        // TODO Handle ping
         match ws_service::parse_message(raw_message.clone()) {
             Ok(message) => on_request(message, &sender, environment).await,
             Err(err) => {

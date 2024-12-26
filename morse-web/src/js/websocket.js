@@ -6,7 +6,7 @@ let message_handlers = new Map(); // Response type -> Handler function list
 let message_queue = []; // Messages that tried to be sent when websocket wasn't established
 
 function getWebsocketUrl() {
-    return "ws://api." + window.location.host + WEBSOCKET_ENDPOINT;
+    return "wss://api." + window.location.host + WEBSOCKET_ENDPOINT;
 }
 
 async function establishWebsocket() {
