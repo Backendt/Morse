@@ -54,7 +54,7 @@ async function copyRoomLink() {
     let invite_link = `${proto}//${host}/#${current_room}`;
 
     let copiedSuccessfully = false;
-    if(navigator.clipboard) { // TODO Not tested
+    if(navigator.clipboard) {
         copiedSuccessfully = await navigator.clipboard.writeText(invite_link)
             .then(() => true, () => false);
     }
