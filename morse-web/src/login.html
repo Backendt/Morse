@@ -5,14 +5,18 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="css/main.css">
+        <link rel="stylesheet" href="css/login.css">
         <script defer src="js/notifications.js"></script>
         <script defer src="js/token.js"></script>
         <script defer onload="onAuthPageLoad()" src="js/auth.js"></script>
     </head>
     <body>
         <div class="center">
-            <h1>Morse</h1>
-            <h4>-- --- .-. ... .</h4>
+            <div id="title">
+                <h1>Morse</h1>
+                <h4>-- --- .-. ... .</h4>
+            </div>
             <main>
                 <form id="user-form">
                     <input id="username" type="text" placeholder="Username" autofocus required/>
@@ -21,9 +25,9 @@
                         <label for="remember">Remember me</label>
                         <input id="remember" type="checkbox" value="yes"/>
                     </div>
-                    <input type="submit" value="Submit"/>
+                    <input type="submit" value="Login"/>
                 </form>
-                <div>
+                <div id="account-buttons">
                     <button id="anonymous-button">As anonymous</button>
                     <button id="register-button">Register</button>
                 </div>

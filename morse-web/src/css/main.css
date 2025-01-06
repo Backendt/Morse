@@ -1,0 +1,16 @@
+html {
+    background-color: #101318;
+    color: #D9DFFF;
+    font-family: "JetBrains Mono"; /*TODO Might not be available*/
+}
+
+input, button, input:before {
+    background-color: #1b1e28;
+    color: #D9DFFF;
+    border: none;
+    padding: 0.5em;
+}
+
+input:hover, button:hover {
+    background-color: #16161e;
+}
