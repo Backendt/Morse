@@ -5,6 +5,8 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <link rel="stylesheet" href="css/main.css">
+        <link rel="stylesheet" href="css/chat.css">
         <link rel="stylesheet" href="css/navbar.css">
         <script defer src="js/notifications.js"></script>
         <script defer src="js/token.js"></script>
@@ -15,13 +17,13 @@
         <script defer onload="onPageLoad()" src="js/main.js"></script>
     </head>
     <body>
-        <header style="display: flex; justify-content: space-between;">
-            <button style="position: relative; z-index: 2" onclick="toggleSidebar()">≡</button>
+        <header>
+            <button id="sidebar-button" onclick="toggleSidebar()">≡</button>
             <p>Connected as <b id="my-name">...</b></p>
         </header>
         <nav>
             <p>Rooms:</p>
-            <div style="display: flex; justify-content: space-between; flex-direction: column;">
+            <div id="rooms">
                 <div id="room-list">
                     <p>You don't have any room.</p>
                 </div>
@@ -34,9 +36,9 @@
                 <p>Users: <span id="room-users"></span></p>
                 <div id="chat">
                     <div id="messages"></div>
-                    <form id="message-form" style="display: flex">
+                    <form id="message-form">
                         <input id="message-input" type="text" placeholder="Send in chat...">
-                        <input type="submit">
+                        <input type="submit" value=">">
                     </form>
                 </div>
             </div>

@@ -1,0 +1,74 @@
+header {
+    display: flex;
+    justify-content: space-between;
+}
+
+header button {
+    position: relative;
+    z-index: 2;
+}
+
+#room-name {
+    margin-right: 0.5em;
+}
+
+html, body {
+    height: 100%;
+    margin: 0px;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    text-align: center;
+    align-content: center;
+    flex-grow: 1;
+}
+
+#room {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+[hidden] { /* Fixes "hidden" tag not working on flexbox */
+    display: none !important;
+}
+
+#chat {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-bottom: 3%;
+    width: 90%;
+}
+
+#message-form {
+    display: flex;
+}
+
+#message-input {
+    width: 100%;
+}
+
+#messages {
+    text-align: left;
+    flex-grow: 1;
+}
+
+#messages p {
+    margin: 0;
+    padding: 0.5em;
+}
+
+#messages p:nth-child(odd) {
+    background-color: #16161e;
+}
+
+#my-name {
+    padding-right: 0.3em;
+}

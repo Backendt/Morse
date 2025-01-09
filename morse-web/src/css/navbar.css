@@ -9,22 +9,38 @@ nav {
     text-wrap: nowrap;
     padding-top: 5%;
     transition: 0.2s;
-    background-color: white; /* Temporary */
+    background-color: #101318;
 }
 
 .nav-open {
     width: 100%;
+    text-align: center;
+}
+
+#rooms {
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
 }
 
 /* Sidebar on desktop */
 @media only screen and (min-width: 700px) {
     .nav-open {
         width: 300px;
-        border-right-style: ridge;
+        border-right: solid 1px;
     }
 }
 
 #room-list {
     display: flex;
     flex-direction: column;
+}
+
+#room-list * {
+    padding: 0.7em;
+    margin-bottom: 1em;
+}
+
+#sidebar-button {
+    padding: 1.2em;
 }

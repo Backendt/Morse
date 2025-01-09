@@ -1,10 +1,10 @@
 html {
     background-color: #101318;
     color: #D9DFFF;
-    font-family: "JetBrains Mono"; /*TODO Might not be available*/
+    font-family: "JetBrains Mono", "Courier New";
 }
 
-input, button, input:before {
+input, button {
     background-color: #1b1e28;
     color: #D9DFFF;
     border: none;
